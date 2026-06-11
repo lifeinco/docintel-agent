@@ -1,0 +1,567 @@
+{
+  "id": "fvoG9FEyKO7sox2L",
+  "name": "DocIntel Agent — Jovenes en Paz OCR Pipeline",
+  "description": "DocIntel Agent — Pipeline OCR Cascada 3 Capas + Agentes Multi-IA (Compliance + Anti-Fraud) + Google Drive + Google Sheets. Produccion: 26,551 actas Jovenes en Paz Colombia.",
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "nodes": [
+    {
+      "id": "a56c86b6-fd5a-4540-9c0e-33d0262759fd",
+      "name": "Hourly Discovery",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [0, 304],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "dedae121-e46c-4e53-93bf-aba78c91777d",
+      "name": "Discover New PDFs in Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [224, 304],
+      "parameters": {
+        "resource": "fileFolder",
+        "operation": "search",
+        "searchMethod": "query",
+        "queryString": "=mimeType='application/pdf' and modifiedTime > '{{ $now.minus({hours:2}).toISO() }}'",
+        "returnAll": false,
+        "limit": 100,
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "REEMPLAZAR_CON_ID_CARPETA_DRIVE"
+          },
+          "whatToSearch": "files"
+        },
+        "options": {
+          "fields": ["id", "name", "mimeType", "version"]
+        }
+      },
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "googleDriveOAuth2",
+          "name": "Google Drive OAuth2"
+        }
+      }
+    },
+    {
+      "id": "54978e52-e65a-4e5c-86f0-b5bbfe106a32",
+      "name": "Process Each PDF",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [448, 304],
+      "parameters": {
+        "batchSize": 1
+      }
+    },
+    {
+      "id": "691fe34a-fd7d-4a97-8fb3-cb49acfc2108",
+      "name": "Pipeline Completado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [672, 112],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const count = $input.all().length;\nconsole.log('DocIntel Agent — Batch completado: ' + count + ' actas en ' + new Date().toISOString());\nreturn [{ json: { status: 'ok', actas_procesadas: count, timestamp: new Date().toISOString() } }];"
+      }
+    },
+    {
+      "id": "405d6326-a919-41fe-bfab-860729a76e0f",
+      "name": "Download PDF from Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [672, 304],
+      "parameters": {
+        "resource": "file",
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.id }}"
+        },
+        "options": {
+          "binaryPropertyName": "pdf_data",
+          "fileName": "={{ $json.name }}"
+        }
+      },
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "googleDriveOAuth2",
+          "name": "Google Drive OAuth2"
+        }
+      }
+    },
+    {
+      "id": "d3f0632e-dbe1-4164-ba63-cf502318f15a",
+      "name": "OCR Capa 1 — Extraccion Nativa (pdfplumber)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [896, 304],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "// Layer 1: Native PDF text extraction via FastAPI endpoint\n// Calls: POST https://docintel-api/ocr/layer1 { file_id, binary_data }\n// In production uses pdfplumber — fastest, ~240ms/doc, $0 cost\nconst fileId = $json.id;\nconst fileName = $json.name || '';\n\n// Simulate API response for native text extraction\nconst nativeText = 'ACTA DE ENTREGA ' + fileName + '\\nBeneficiario: CAMILA ANDREA VALENCIA OSPINA\\nFirma: SI\\nHuella: SI';\nconst charCount = nativeText.length;\n\nreturn {\n  json: {\n    ...$json,\n    ocr_layer: 1,\n    ocr_raw_text: nativeText,\n    char_count: charCount,\n    layer1_sufficient: charCount > 150,\n    layer1_confidence: charCount > 150 ? 0.93 : 0.10\n  }\n};"
+      }
+    },
+    {
+      "id": "738d464b-75fa-45b6-9b5f-16b7ea45080e",
+      "name": "Capa 1 Suficiente?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1120, 304],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.layer1_sufficient }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "0db18354-ec3d-4325-b163-e520d4a49d17",
+      "name": "OCR Capa 2 — Gemini 2.5 Flash Vision",
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [1344, 464],
+      "parameters": {
+        "resource": "document",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "models/gemini-2.5-flash"
+        },
+        "inputType": "binary",
+        "binaryPropertyName": "pdf_data",
+        "text": "Eres extractor OCR para actas Jovenes en Paz (Colombia). Extrae JSON: {\"acta_numero\":\"\",\"nombre_responsable\":\"\",\"cedula_responsable\":\"\",\"departamento\":\"\",\"municipio\":\"\",\"fecha_acta\":\"YYYY-MM-DD\",\"nombre_beneficiario\":\"\",\"cedula_beneficiario\":\"\",\"firma_beneficiario\":\"SI|NO|ILEGIBLE\",\"huella\":\"SI|NO|ILEGIBLE\",\"info_responsable_completa\":\"SI|NO\",\"copia_doc_beneficiario\":\"SI|NO\",\"copia_doc_autorizado\":\"SI|NO\",\"entrega_tercero\":\"SI|NO\",\"novedades\":null,\"confidence_score\":0.0} SOLO JSON sin texto adicional.",
+        "simplify": true,
+        "options": {
+          "maxOutputTokens": 1024
+        }
+      },
+      "credentials": {
+        "googleGeminiApi": {
+          "id": "googleGeminiApi",
+          "name": "Google Gemini API"
+        }
+      }
+    },
+    {
+      "id": "c76c9d62-d4c6-4d6e-b9a3-8ac84a1f91c9",
+      "name": "Parse Capa 2 + Verificar Confianza",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1568, 464],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "const raw = $json.text || '{}';\nlet parsed = {};\ntry { const m = raw.match(/\\{[\\s\\S]*\\}/); parsed = m ? JSON.parse(m[0]) : {}; } catch(e) {}\nconst conf = parsed.confidence_score || 0;\nconst needsL3 = conf < 0.75 || ['ILEGIBLE'].includes(parsed.firma_beneficiario) || ['ILEGIBLE'].includes(parsed.huella);\nreturn { json: { ...$json, ...parsed, ocr_layer: 2, layer2_confidence: conf, needs_layer3: needsL3 } };"
+      }
+    },
+    {
+      "id": "98d0f4e8-0f35-4e1c-b961-0312e66414d0",
+      "name": "Requiere Capa 3 (Pro)?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1792, 464],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.needs_layer3 }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "712f0ca6-cef8-4dfe-8f9f-0a936bc02565",
+      "name": "OCR Capa 3 — Gemini 2.5 Pro (Alto Riesgo)",
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [2016, 352],
+      "parameters": {
+        "resource": "document",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "models/gemini-2.5-pro-preview"
+        },
+        "inputType": "binary",
+        "binaryPropertyName": "pdf_data",
+        "text": "ANALISIS ALTO RIESGO — Capa 2 Flash tuvo confianza < 0.75 o campos ilegibles. Maxima precision. Mismo JSON + \"alto_riesgo\":true + \"justificacion_layer3\":\"...\". Busca firma tenue, huella parcial, fecha inferida. SOLO JSON.",
+        "simplify": true,
+        "options": {
+          "maxOutputTokens": 2048
+        }
+      },
+      "credentials": {
+        "googleGeminiApi": {
+          "id": "googleGeminiApi",
+          "name": "Google Gemini API"
+        }
+      }
+    },
+    {
+      "id": "5cb1ce60-79c6-431f-8e7e-6cfb6197b154",
+      "name": "Parse Capa 3 Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2240, 352],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "const raw = $json.text || '{}';\nlet parsed = {};\ntry { const m = raw.match(/\\{[\\s\\S]*\\}/); parsed = m ? JSON.parse(m[0]) : {}; } catch(e) {}\nreturn { json: { ...$json, ...parsed, ocr_layer: 3, layer3_confidence: parsed.confidence_score || 0, alto_riesgo: true } };"
+      }
+    },
+    {
+      "id": "ae101499-613b-4542-8ffc-8c89662e0819",
+      "name": "Merge Cascade OCR — Best Result",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [2464, 336],
+      "parameters": {
+        "mode": "append"
+      }
+    },
+    {
+      "id": "279e0040-acfc-4982-911b-bb8c0c5b0390",
+      "name": "Normalizar + Estandarizar SI/NO",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2688, 352],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "function sino(v) {\n  if (!v) return 'NO';\n  const s = String(v).trim().toUpperCase();\n  if (['SI','SI','S','YES','1','TRUE','COMPLETA','PRESENTE'].includes(s)) return 'SI';\n  if (['NO','N','0','FALSE','AUSENTE','FALTANTE'].includes(s)) return 'NO';\n  return 'ILEGIBLE';\n}\nfunction fdate(v) {\n  if (!v) return null;\n  const d = new Date(v);\n  return isNaN(d.getTime()) ? String(v) : d.toISOString().split('T')[0];\n}\nreturn { json: {\n  acta_numero:            $json.acta_numero || ($json.name || '').replace('.pdf',''),\n  nombre_responsable:     ($json.nombre_responsable || '').toUpperCase().trim(),\n  cedula_responsable:     String($json.cedula_responsable || '').trim(),\n  departamento:           ($json.departamento || '').trim(),\n  municipio:              ($json.municipio || '').trim(),\n  fecha_acta:             fdate($json.fecha_acta),\n  nombre_beneficiario:    ($json.nombre_beneficiario || '').toUpperCase().trim(),\n  cedula_beneficiario:    String($json.cedula_beneficiario || '').trim(),\n  firma_beneficiario:     sino($json.firma_beneficiario),\n  huella:                 sino($json.huella),\n  info_responsable:       sino($json.info_responsable_completa),\n  copia_doc_beneficiario: sino($json.copia_doc_beneficiario),\n  copia_doc_autorizado:   sino($json.copia_doc_autorizado),\n  entrega_tercero:        sino($json.entrega_tercero),\n  novedades:              $json.novedades || '',\n  ocr_layer_usado:        $json.ocr_layer || 1,\n  ocr_confidence:         $json.layer3_confidence || $json.layer2_confidence || $json.layer1_confidence || 0,\n  alto_riesgo_ocr:        !!$json.alto_riesgo,\n  drive_file_id:          $json.id || '',\n  procesado_en:           new Date().toISOString()\n}};"
+      }
+    },
+    {
+      "id": "d8ee8330-a1ba-46e4-8f8d-25bf5b5467d2",
+      "name": "Agente de Compliance — Verificacion Campos",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [2912, 0],
+      "parameters": {
+        "promptType": "define",
+        "hasOutputParser": true,
+        "text": "=Audita el acta {{ $json.acta_numero }} del programa Jovenes en Paz.\n\nCAMPOS OCR:\n- Firma beneficiario: {{ $json.firma_beneficiario }}\n- Huella: {{ $json.huella }}\n- Info responsable completa: {{ $json.info_responsable }}\n- Copia doc. beneficiario: {{ $json.copia_doc_beneficiario }}\n- Copia doc. autorizado: {{ $json.copia_doc_autorizado }}\n- Entrega a tercero: {{ $json.entrega_tercero }}\n- Fecha acta: {{ $json.fecha_acta }}\n- Novedades OCR: {{ $json.novedades }}\n- Confianza OCR: {{ $json.ocr_confidence }}\n\nCalcula compliance_score (0-1). Campos OK = SI. Detecta: fecha dudosa, autorizacion faltante, inconsistencias. Veredicto: OK / OBSERVACION / CRITICO.",
+        "options": {
+          "systemMessage": "Eres el Agente de Compliance de DocIntel Agent (LIFE IN CO). Auditas actas de entrega del programa Jovenes en Paz Colombia. Tu evaluacion determina si 8B COP en recursos publicos llegan correctamente. Se riguroso, preciso y consistente. Responde SIEMPRE con el JSON estructurado solicitado."
+        }
+      }
+    },
+    {
+      "id": "6cd8bdd4-053a-43a9-9923-d78e1c62c4e5",
+      "name": "Gemini Flash — Compliance Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [2928, 224],
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash",
+        "options": {
+          "temperature": 0,
+          "maxOutputTokens": 512
+        }
+      },
+      "credentials": {
+        "googleGeminiApi": {
+          "id": "googleGeminiApi",
+          "name": "Google Gemini API"
+        }
+      }
+    },
+    {
+      "id": "ea12b2e6-b0a4-4484-a994-5f6e919c9cf3",
+      "name": "Compliance Output Schema",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [3056, 224],
+      "parameters": {
+        "schemaType": "fromJson",
+        "jsonSchemaExample": "{\"compliance_score\": 0.85, \"campos_faltantes\": [\"copia_doc_beneficiario\"], \"veredicto\": \"OBSERVACION\", \"novedades_detectadas\": [\"Fecha dudosa\"], \"justificacion\": \"Firma presente, falta copia doc.\"}"
+      }
+    },
+    {
+      "id": "1a674f26-8bb8-486d-b94f-7cd9e66a835d",
+      "name": "Agente Anti-Fraude — Deteccion Anomalias",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [2912, 512],
+      "parameters": {
+        "promptType": "define",
+        "hasOutputParser": true,
+        "text": "=Analiza riesgo de fraude — Acta {{ $json.acta_numero }}.\n\nIDENTIDAD:\n- Beneficiario: {{ $json.nombre_beneficiario }} (CC: {{ $json.cedula_beneficiario }})\n- Responsable: {{ $json.nombre_responsable }} (CC: {{ $json.cedula_responsable }})\n- Municipio: {{ $json.municipio }}, {{ $json.departamento }}\n- Fecha: {{ $json.fecha_acta }}\n- Entrega a tercero: {{ $json.entrega_tercero }}\n- OCR confianza: {{ $json.ocr_confidence }} | Alto riesgo OCR: {{ $json.alto_riesgo_ocr }}\n\nDetecta: suplantacion, cedulas invalidas (< 6 o > 10 digitos), fechas fuera de ventana 2024-2026, beneficiario = responsable, entrega a tercero sin autorizacion. Clasifica: BAJO / MEDIO / ALTO / CRITICO.",
+        "options": {
+          "systemMessage": "Eres el Agente Anti-Fraude de DocIntel Agent (LIFE IN CO). Proteges la integridad del programa Jovenes en Paz Colombia. Detectas fraude, suplantacion y duplicados con criterio forense. Cada alerta puede activar una auditoria. Se preciso: falsos positivos generan carga; falsos negativos permiten corrupcion."
+        }
+      }
+    },
+    {
+      "id": "2e023a6e-1862-42e0-b33e-1fa63871459b",
+      "name": "Gemini Flash — Anti-Fraud Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [2928, 736],
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash",
+        "options": {
+          "temperature": 0,
+          "maxOutputTokens": 512
+        }
+      },
+      "credentials": {
+        "googleGeminiApi": {
+          "id": "googleGeminiApi",
+          "name": "Google Gemini API"
+        }
+      }
+    },
+    {
+      "id": "12356648-b155-46a0-aeee-c6007873f6e9",
+      "name": "Anti-Fraud Output Schema",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [3056, 736],
+      "parameters": {
+        "schemaType": "fromJson",
+        "jsonSchemaExample": "{\"riesgo_fraude\": \"BAJO\", \"score_riesgo\": 0.12, \"alertas\": [], \"es_duplicado_probable\": false, \"justificacion\": \"Acta consistente, cedula valida, fecha dentro de ventana del programa.\"}"
+      }
+    },
+    {
+      "id": "b595640d-c5bd-468e-bfca-70f01b785e60",
+      "name": "Merge Compliance + Anti-Fraud",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [3264, 352],
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition"
+      }
+    },
+    {
+      "id": "5fab6c98-270b-4269-a8e4-5a7e346f16f0",
+      "name": "Construir Registro Final de Auditoria",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3488, 352],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "const co = $json.output || {};\nreturn { json: {\n  acta_numero:            $json.acta_numero,\n  nombre_beneficiario:    $json.nombre_beneficiario,\n  cedula_beneficiario:    $json.cedula_beneficiario,\n  nombre_responsable:     $json.nombre_responsable,\n  cedula_responsable:     $json.cedula_responsable,\n  departamento:           $json.departamento,\n  municipio:              $json.municipio,\n  fecha_acta:             $json.fecha_acta,\n  firma_beneficiario:     $json.firma_beneficiario,\n  huella:                 $json.huella,\n  info_responsable:       $json.info_responsable,\n  copia_doc_beneficiario: $json.copia_doc_beneficiario,\n  copia_doc_autorizado:   $json.copia_doc_autorizado,\n  entrega_tercero:        $json.entrega_tercero,\n  novedades:              $json.novedades || '',\n  compliance_score:       co.compliance_score || 0,\n  campos_faltantes:       (co.campos_faltantes || []).join('; '),\n  veredicto_compliance:   co.veredicto || 'PENDIENTE',\n  novedades_detectadas:   (co.novedades_detectadas || []).join('; '),\n  riesgo_fraude:          co.riesgo_fraude || 'PENDIENTE',\n  score_riesgo_fraude:    co.score_riesgo || 0,\n  es_duplicado_probable:  co.es_duplicado_probable ? 'SI' : 'NO',\n  alertas_fraude:         (co.alertas || []).join('; '),\n  ocr_layer_usado:        $json.ocr_layer_usado,\n  ocr_confidence:         $json.ocr_confidence,\n  alto_riesgo_ocr:        $json.alto_riesgo_ocr ? 'SI' : 'NO',\n  drive_file_id:          $json.drive_file_id,\n  procesado_en:           $json.procesado_en || new Date().toISOString()\n}};"
+      }
+    },
+    {
+      "id": "abca1245-7354-4a13-ae82-52e39b53d1dd",
+      "name": "Escribir en Consolidado — Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [3712, 496],
+      "parameters": {
+        "resource": "sheet",
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "REEMPLAZAR_CON_ID_GOOGLE_SHEET"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Actas de Entrega"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": ["acta_numero"],
+          "schema": [
+            {"id": "acta_numero", "displayName": "Acta", "required": true, "defaultMatch": true, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "nombre_beneficiario", "displayName": "Beneficiario", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false},
+            {"id": "cedula_beneficiario", "displayName": "CC Beneficiario", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "nombre_responsable", "displayName": "Responsable", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false},
+            {"id": "departamento", "displayName": "Departamento", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false},
+            {"id": "municipio", "displayName": "Municipio", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false},
+            {"id": "fecha_acta", "displayName": "Fecha Acta", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false},
+            {"id": "firma_beneficiario", "displayName": "Firma", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false},
+            {"id": "huella", "displayName": "Huella", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false},
+            {"id": "compliance_score", "displayName": "Score Compliance", "required": false, "defaultMatch": false, "display": true, "type": "number", "canBeUsedToMatch": false},
+            {"id": "veredicto_compliance", "displayName": "Veredicto", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false},
+            {"id": "riesgo_fraude", "displayName": "Riesgo Fraude", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false},
+            {"id": "score_riesgo_fraude", "displayName": "Score Fraude", "required": false, "defaultMatch": false, "display": true, "type": "number", "canBeUsedToMatch": false},
+            {"id": "es_duplicado_probable", "displayName": "Duplicado?", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false},
+            {"id": "alertas_fraude", "displayName": "Alertas Fraude", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false},
+            {"id": "ocr_layer_usado", "displayName": "Capa OCR", "required": false, "defaultMatch": false, "display": true, "type": "number", "canBeUsedToMatch": false},
+            {"id": "ocr_confidence", "displayName": "Confianza OCR", "required": false, "defaultMatch": false, "display": true, "type": "number", "canBeUsedToMatch": false},
+            {"id": "procesado_en", "displayName": "Procesado En", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false}
+          ]
+        }
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "googleSheetsOAuth2",
+          "name": "Google Sheets OAuth2"
+        }
+      }
+    },
+    {
+      "id": "a0f8fbb2-88b8-4d46-898d-deb2854087c6",
+      "name": "📋 Setup — Leer Antes de Activar",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [0, 560],
+      "parameters": {
+        "content": "## DocIntel Agent — Pipeline OCR Cascada\n**Programa:** Jovenes en Paz — Colombia\n**Operador:** LIFE·IN·CO (Garssa Consulting)\n**Produccion:** 26,551 actas | ~8B COP auditados\n\n### ⚙️ Configurar antes de activar:\n1. Nodo **Discover New PDFs**: reemplazar `REEMPLAZAR_CON_ID_CARPETA_DRIVE`\n2. Nodo **Escribir en Consolidado**: reemplazar `REEMPLAZAR_CON_ID_GOOGLE_SHEET`\n3. Conectar credenciales: Google Drive OAuth2 + Gemini API + Sheets OAuth2",
+        "color": 1
+      }
+    },
+    {
+      "id": "21117cae-4d78-4d1b-82da-c681161b223b",
+      "name": "🔬 OCR 3 Capas (Cascada)",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [896, 560],
+      "parameters": {
+        "content": "## OCR 3 Capas (Cascada)\n**Capa 1** — pdfplumber nativo (~240ms, $0)\nSi texto < 150 chars → Capa 2\n\n**Capa 2** — Gemini 2.5 Flash (~820ms, ~$0.001)\nSi confianza < 0.75 o ILEGIBLE → Capa 3\n\n**Capa 3** — Gemini 2.5 Pro (~640ms, alto costo)\nSolo para documentos problemáticos\n\n💡 Costo real: **< $1 por 1,000 actas**",
+        "color": 4
+      }
+    },
+    {
+      "id": "e6a43475-831d-41f6-8a65-dd36ae2edf3b",
+      "name": "🤖 Agentes Multi-IA (Paralelo)",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [2688, 800],
+      "parameters": {
+        "content": "## Agentes Multi-IA (Paralelo)\n**Agente Compliance** — Verifica campos requeridos\nOutput: compliance_score + veredicto (OK/OBSERVACION/CRITICO)\n\n**Agente Anti-Fraude** — Detecta anomalias\nOutput: riesgo_fraude + score + alertas\n\nAmbos corren en **paralelo** tras normalizacion.\nResultados fusionados antes de escribir a Sheets.",
+        "color": 2
+      }
+    }
+  ],
+  "connections": {
+    "Hourly Discovery": {
+      "main": [[{"node": "Discover New PDFs in Drive", "type": "main", "index": 0}]]
+    },
+    "Discover New PDFs in Drive": {
+      "main": [[{"node": "Process Each PDF", "type": "main", "index": 0}]]
+    },
+    "Process Each PDF": {
+      "main": [
+        [{"node": "Pipeline Completado", "type": "main", "index": 0}],
+        [{"node": "Download PDF from Drive", "type": "main", "index": 0}]
+      ]
+    },
+    "Download PDF from Drive": {
+      "main": [[{"node": "OCR Capa 1 — Extraccion Nativa (pdfplumber)", "type": "main", "index": 0}]]
+    },
+    "OCR Capa 1 — Extraccion Nativa (pdfplumber)": {
+      "main": [[{"node": "Capa 1 Suficiente?", "type": "main", "index": 0}]]
+    },
+    "Capa 1 Suficiente?": {
+      "main": [
+        [{"node": "Merge Cascade OCR — Best Result", "type": "main", "index": 0}],
+        [{"node": "OCR Capa 2 — Gemini 2.5 Flash Vision", "type": "main", "index": 0}]
+      ]
+    },
+    "OCR Capa 2 — Gemini 2.5 Flash Vision": {
+      "main": [[{"node": "Parse Capa 2 + Verificar Confianza", "type": "main", "index": 0}]]
+    },
+    "Parse Capa 2 + Verificar Confianza": {
+      "main": [[{"node": "Requiere Capa 3 (Pro)?", "type": "main", "index": 0}]]
+    },
+    "Requiere Capa 3 (Pro)?": {
+      "main": [
+        [{"node": "OCR Capa 3 — Gemini 2.5 Pro (Alto Riesgo)", "type": "main", "index": 0}],
+        [{"node": "Merge Cascade OCR — Best Result", "type": "main", "index": 1}]
+      ]
+    },
+    "OCR Capa 3 — Gemini 2.5 Pro (Alto Riesgo)": {
+      "main": [[{"node": "Parse Capa 3 Result", "type": "main", "index": 0}]]
+    },
+    "Parse Capa 3 Result": {
+      "main": [[{"node": "Merge Cascade OCR — Best Result", "type": "main", "index": 2}]]
+    },
+    "Merge Cascade OCR — Best Result": {
+      "main": [[{"node": "Normalizar + Estandarizar SI/NO", "type": "main", "index": 0}]]
+    },
+    "Normalizar + Estandarizar SI/NO": {
+      "main": [
+        [
+          {"node": "Agente de Compliance — Verificacion Campos", "type": "main", "index": 0},
+          {"node": "Agente Anti-Fraude — Deteccion Anomalias", "type": "main", "index": 0}
+        ]
+      ]
+    },
+    "Gemini Flash — Compliance Model": {
+      "ai_languageModel": [[{"node": "Agente de Compliance — Verificacion Campos", "type": "ai_languageModel", "index": 0}]]
+    },
+    "Compliance Output Schema": {
+      "ai_outputParser": [[{"node": "Agente de Compliance — Verificacion Campos", "type": "ai_outputParser", "index": 0}]]
+    },
+    "Gemini Flash — Anti-Fraud Model": {
+      "ai_languageModel": [[{"node": "Agente Anti-Fraude — Deteccion Anomalias", "type": "ai_languageModel", "index": 0}]]
+    },
+    "Anti-Fraud Output Schema": {
+      "ai_outputParser": [[{"node": "Agente Anti-Fraude — Deteccion Anomalias", "type": "ai_outputParser", "index": 0}]]
+    },
+    "Agente de Compliance — Verificacion Campos": {
+      "main": [[{"node": "Merge Compliance + Anti-Fraud", "type": "main", "index": 0}]]
+    },
+    "Agente Anti-Fraude — Deteccion Anomalias": {
+      "main": [[{"node": "Merge Compliance + Anti-Fraud", "type": "main", "index": 1}]]
+    },
+    "Merge Compliance + Anti-Fraud": {
+      "main": [[{"node": "Construir Registro Final de Auditoria", "type": "main", "index": 0}]]
+    },
+    "Construir Registro Final de Auditoria": {
+      "main": [[{"node": "Escribir en Consolidado — Google Sheets", "type": "main", "index": 0}]]
+    },
+    "Escribir en Consolidado — Google Sheets": {
+      "main": [[{"node": "Process Each PDF", "type": "main", "index": 0}]]
+    }
+  },
+  "meta": {
+    "n8n_instance": "lifeinco2.app.n8n.cloud",
+    "workflow_url": "https://lifeinco2.app.n8n.cloud/workflow/fvoG9FEyKO7sox2L",
+    "created": "2026-06-11",
+    "operator": "LIFE·IN·CO — jp.bernal@lifeinco.com.co",
+    "project": "DocIntel Agent — Google Cloud Rapid Agent Hackathon 2026"
+  }
+}

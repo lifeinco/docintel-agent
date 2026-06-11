@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DocIntel Agent — Jóvenes en Paz · Dashboard OCR</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg:       #04080A;
+    --surface:  #0D1B1A;
+    --card:     #111F1D;
+    --border:   #1E3330;
+    --acc:      #2FBF8F;
+    --acc2:     #25A87B;
+    --gold:     #C9A84C;
+    --danger:   #E05252;
+    --warn:     #E8A838;
+    --txt:      #E8F0EE;
+    --muted:    #7A9E98;
+    --mono:     'IBM Plex Mono', monospace;
+    --sans:     'Space Grotesk', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--txt);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  /* ── TOPBAR ── */
+  .topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .topbar-left { display: flex; align-items: center; gap: 16px; }
+  .brand-mark {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, var(--acc), var(--acc2));
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: 700; color: #04080A;
+    flex-shrink: 0;
+  }
+  .brand-name {
+    font-size: 15px; font-weight: 600; color: var(--txt);
+    letter-spacing: -0.3px;
+  }
+  .brand-sub {
+    font-size: 11px; color: var(--muted);
+    font-family: var(--mono);
+    margin-top: 1px;
+  }
+  .divider-v { width: 1px; height: 28px; background: var(--border); }
+  .program-label { font-size: 13px; color: var(--muted); }
+  .program-name { font-size: 14px; font-weight: 600; color: var(--acc); }
+
+  .topbar-right { display: flex; align-items: center; gap: 10px; }
+  .badge-live {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; font-family: var(--mono);
+    color: var(--acc); padding: 4px 10px;
+    background: rgba(47,191,143,0.1);
+    border: 1px solid rgba(47,191,143,0.25);
+    border-radius: 20px;
+  }
+  .badge-live::before {
+    content: '';
+    width: 7px; height: 7px;
+    background: var(--acc);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity:1; }
+    50% { opacity:0.4; }
+  }
+
+  .btn-csv {
+    background: transparent !important;
+    border: 1px solid var(--acc) !important;
+    color: var(--acc) !important;
+    text-decoration: none;
+  }
+  .btn-csv:hover { background: rgba(47,191,143,0.1) !important; }
+  .btn-download {
+    display: flex; align-items: center; gap: 8px;
+    background: linear-gradient(135deg, var(--acc), var(--acc2));
+    color: #04080A;
+    border: none; border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 13px; font-weight: 600;
+    font-family: var(--sans);
+    cursor: pointer;
+    transition: opacity .2s, transform .1s;
+  }
+  .btn-download:hover { opacity:.88; }
+  .btn-download:active { transform: scale(0.97); }
+
+  /* ── MAIN ── */
+  .main { padding: 28px 32px; max-width: 1320px; margin: 0 auto; }
+
+  /* ── SECTION HEADER ── */
+  .section-header {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 16px;
+  }
+  .section-line { width: 3px; height: 20px; background: var(--acc); border-radius: 2px; }
+  .section-title { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+
+  /* ── IQG BANNER ── */
+  .iqg-banner {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px 28px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    flex-wrap: wrap;
+  }
+  .iqg-score {
+    font-size: 56px; font-weight: 700;
+    color: var(--warn);
+    font-family: var(--mono);
+    line-height: 1;
+    letter-spacing: -2px;
+  }
+  .iqg-info { flex: 1; min-width: 180px; }
+  .iqg-label { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: 6px; }
+  .iqg-desc { font-size: 12px; color: var(--muted); margin-bottom: 14px; }
+  .progress-track {
+    background: var(--border);
+    border-radius: 4px; height: 8px; width: 100%; max-width: 400px;
+    position: relative; overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; border-radius: 4px;
+    background: linear-gradient(90deg, var(--warn), #E8C250);
+    transition: width 1s ease;
+  }
+  .progress-meta {
+    display: flex; justify-content: space-between;
+    font-size: 11px; color: var(--muted);
+    max-width: 400px; margin-top: 4px;
+    font-family: var(--mono);
+  }
+  .progress-meta span:last-child { color: var(--acc); }
+  .iqg-badge {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px; font-weight: 600;
+    background: rgba(232,168,56,0.12);
+    border: 1px solid rgba(232,168,56,0.3);
+    color: var(--warn);
+    font-family: var(--mono);
+    align-self: flex-start;
+    white-space: nowrap;
+  }
+
+  /* ── KPI CARDS ── */
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+  @media (max-width: 900px) { .kpi-grid { grid-template-columns: repeat(2,1fr); } }
+  .kpi-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+  }
+  .kpi-icon { font-size: 20px; margin-bottom: 8px; }
+  .kpi-value { font-size: 32px; font-weight: 700; font-family: var(--mono); line-height: 1; margin-bottom: 4px; }
+  .kpi-label { font-size: 12px; color: var(--muted); }
+  .kpi-delta { font-size: 11px; margin-top: 6px; font-family: var(--mono); }
+  .kpi-delta.up { color: var(--acc); }
+  .kpi-delta.neutral { color: var(--muted); }
+  .kpi-delta.err { color: var(--danger); }
+
+  /* ── QUALITY METRICS ── */
+  .qual-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 24px; }
+  @media (max-width: 900px) { .qual-grid { grid-template-columns: repeat(2,1fr); } }
+  .qual-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 18px;
+  }
+  .qual-pct {
+    font-size: 28px; font-weight: 700;
+    font-family: var(--mono);
+    margin-bottom: 4px;
+  }
+  .qual-name { font-size: 13px; font-weight: 500; margin-bottom: 2px; }
+  .qual-sub { font-size: 11px; color: var(--muted); }
+  .qual-bar {
+    margin-top: 10px;
+    height: 5px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .qual-bar-fill { height: 100%; border-radius: 3px; transition: width 1s ease; }
+
+  /* ── STAT CARDS ── */
+  .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+  @media (max-width: 900px) { .stat-grid { grid-template-columns: repeat(2,1fr); } }
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 18px;
+    display: flex; gap: 12px; align-items: flex-start;
+  }
+  .stat-icon { font-size: 22px; flex-shrink: 0; margin-top: 2px; }
+  .stat-num { font-size: 26px; font-weight: 700; font-family: var(--mono); line-height: 1; margin-bottom: 4px; }
+  .stat-label { font-size: 12px; color: var(--muted); }
+
+  /* ── CHARTS ROW ── */
+  .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 24px; }
+  @media (max-width: 900px) { .charts-row { grid-template-columns: 1fr; } }
+  .chart-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .chart-title { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+  .chart-sub { font-size: 11px; color: var(--muted); margin-bottom: 16px; }
+  .chart-wrap { position: relative; height: 240px; }
+
+  /* ── COVERAGE CHART ── */
+  .coverage-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 24px;
+  }
+  .chart-wrap-tall { position: relative; height: 260px; }
+
+  /* ── TWO COL ── */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 24px; }
+  @media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
+
+  /* ── TABLE ── */
+  .table-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--muted);
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+  }
+  td {
+    padding: 9px 10px;
+    font-size: 13px;
+    border-bottom: 1px solid rgba(30,51,48,.5);
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(47,191,143,0.04); }
+  .td-num { font-family: var(--mono); font-size: 13px; font-weight: 500; text-align: right; }
+  .td-bar-wrap { width: 80px; vertical-align: middle; }
+  .td-bar { height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .td-bar-fill { height: 100%; border-radius: 3px; background: var(--acc); }
+
+  /* ── RESPONSABLES CRÍTICOS ── */
+  .resp-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(30,51,48,.5);
+  }
+  .resp-row:last-child { border-bottom: none; }
+  .resp-name { flex: 1; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .resp-pct { font-family: var(--mono); font-size: 13px; font-weight: 600; width: 44px; text-align: right; }
+  .resp-actas { font-family: var(--mono); font-size: 11px; color: var(--muted); width: 48px; text-align: right; }
+  .resp-seg {
+    width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0;
+    margin-left: 6px;
+  }
+  .seg-danger { background: var(--danger); }
+  .seg-warn { background: var(--warn); }
+  .seg-ok { background: var(--acc); }
+
+  /* ── NOVEDADES ── */
+  .nov-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media (max-width: 700px) { .nov-grid { grid-template-columns: 1fr; } }
+  .nov-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .nov-icon { font-size: 20px; flex-shrink: 0; }
+  .nov-info { flex: 1; }
+  .nov-cat { font-size: 12px; font-weight: 600; margin-bottom: 2px; }
+  .nov-desc { font-size: 11px; color: var(--muted); }
+  .nov-count { font-family: var(--mono); font-size: 18px; font-weight: 700; color: var(--warn); white-space: nowrap; }
+
+  /* ── HEATMAP TABLE ── */
+  .heat-wrap { overflow-x: auto; }
+  .heat-table { min-width: 600px; }
+  .heat-cell { font-family: var(--mono); font-size: 12px; text-align: right; padding: 8px 10px; }
+  .heat-0 { color: var(--muted); }
+  .heat-1 { color: #7adfc0; }
+  .heat-2 { color: var(--acc); }
+  .heat-3 { color: var(--warn); }
+  .heat-4 { color: var(--danger); }
+  .heat-dash { color: var(--border); }
+
+  /* ── FOOTER ── */
+  .footer {
+    margin-top: 40px;
+    padding: 24px 32px;
+    border-top: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; flex-wrap: wrap;
+  }
+  .footer-brand { display: flex; align-items: center; gap: 10px; }
+  .footer-text { font-size: 11px; color: var(--muted); }
+  .footer-text strong { color: var(--acc); }
+  .footer-meta { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+
+  /* ── PRINT ── */
+  @media print {
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    body { background: #04080A !important; color: #E8F0EE !important; }
+    .topbar { position: relative; }
+    .btn-download { display: none !important; }
+    .badge-live { display: none !important; }
+    .main { padding: 16px !important; }
+    .charts-row, .two-col { grid-template-columns: 1fr !important; }
+    .kpi-grid { grid-template-columns: repeat(2,1fr) !important; }
+    .stat-grid { grid-template-columns: repeat(2,1fr) !important; }
+    .qual-grid { grid-template-columns: repeat(2,1fr) !important; }
+    .nov-grid { grid-template-columns: repeat(2,1fr) !important; }
+    canvas { max-height: 200px !important; }
+    .chart-card, .coverage-card, .table-card { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <div class="topbar-left">
+    <div class="brand-mark">D</div>
+    <div>
+      <div class="brand-name">DocIntel Agent</div>
+      <div class="brand-sub">by LIFE·IN·CO</div>
+    </div>
+    <div class="divider-v"></div>
+    <div>
+      <div class="program-label">Programa</div>
+      <div class="program-name">Jóvenes en Paz — OCR Dashboard</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="badge-live">PRODUCCIÓN</div>
+    <a class="btn-download" href="actas_2026-06-11.csv" download="actas_JEP_2026-06-11.csv">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M2 11v2a1 1 0 001 1h10a1 1 0 001-1v-2h-1.5v1.5h-9V11H2zm6-9.5v8.1l2.3-2.3 1.1 1L8 11.6l-3.4-3.3 1.1-1L8 9.6V1.5H8z"/></svg>
+      Descargar CSV
+    </a>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- ÍNDICE GLOBAL DE CALIDAD -->
+  <div style="margin-bottom:20px;">
+    <div class="section-header">
+      <div class="section-line"></div>
+      <span class="section-title">Índice Global de Calidad</span>
+    </div>
+    <div class="iqg-banner">
+      <div class="iqg-score">60.6%</div>
+      <div class="iqg-info">
+        <div class="iqg-label">Índice Global de Calidad</div>
+        <div class="iqg-desc">Promedio de firma beneficiario, huella, info responsable, copia doc. beneficiario y copia doc. autorizado</div>
+        <div class="progress-track"><div class="progress-fill" style="width:60.6%"></div></div>
+        <div class="progress-meta"><span>0%</span><span style="color:var(--warn)">60.6% actual</span><span>Meta: 85%</span></div>
+      </div>
+      <div class="iqg-badge">⚠ 24.4 pts. por debajo de la meta</div>
+    </div>
+  </div>
+
+  <!-- KPI CARDS -->
+  <div class="section-header">
+    <div class="section-line"></div>
+    <span class="section-title">Actividad del mes</span>
+  </div>
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-icon">📋</div>
+      <div class="kpi-value" style="color:var(--acc)">4</div>
+      <div class="kpi-label">Actas procesadas (mes)</div>
+      <div class="kpi-delta up">▲ +2 vs mes anterior</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">👥</div>
+      <div class="kpi-value" style="color:var(--acc)">4</div>
+      <div class="kpi-label">Beneficiarios únicos (mes)</div>
+      <div class="kpi-delta neutral">— Sin variación</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">⏳</div>
+      <div class="kpi-value" style="color:var(--muted)">0</div>
+      <div class="kpi-label">Pendientes / procesando</div>
+      <div class="kpi-delta neutral">— Cola vacía</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">❌</div>
+      <div class="kpi-value" style="color:var(--danger)">3</div>
+      <div class="kpi-label">Con errores</div>
+      <div class="kpi-delta err">Requieren revisión</div>
+    </div>
+  </div>
+
+  <!-- QUALITY METRICS -->
+  <div class="section-header">
+    <div class="section-line"></div>
+    <span class="section-title">Métricas de calidad por campo</span>
+  </div>
+  <div class="qual-grid">
+
+    <div class="qual-card">
+      <div class="qual-pct" style="color:var(--acc)">89.4%</div>
+      <div class="qual-name">Firma del beneficiario</div>
+      <div class="qual-sub">Actas con firma SI</div>
+      <div class="qual-bar"><div class="qual-bar-fill" style="width:89.4%;background:var(--acc)"></div></div>
+    </div>
+
+    <div class="qual-card">
+      <div class="qual-pct" style="color:var(--acc)">97.6%</div>
+      <div class="qual-name">Huella dactilar</div>
+      <div class="qual-sub">Actas con huella SI</div>
+      <div class="qual-bar"><div class="qual-bar-fill" style="width:97.6%;background:var(--acc)"></div></div>
+    </div>
+
+    <div class="qual-card">
+      <div class="qual-pct" style="color:var(--acc)">93.5%</div>
+      <div class="qual-name">Info responsable completa</div>
+      <div class="qual-sub">Nombre + CC + contacto</div>
+      <div class="qual-bar"><div class="qual-bar-fill" style="width:93.5%;background:var(--acc)"></div></div>
+    </div>
+
+    <div class="qual-card">
+      <div class="qual-pct" style="color:var(--danger)">2.3%</div>
+      <div class="qual-name">Copia doc. beneficiario</div>
+      <div class="qual-sub">Actas con copia adjunta</div>
+      <div class="qual-bar"><div class="qual-bar-fill" style="width:2.3%;background:var(--danger)"></div></div>
+    </div>
+
+    <div class="qual-card">
+      <div class="qual-pct" style="color:var(--warn)">20.0%</div>
+      <div class="qual-name">Copia doc. autorizado</div>
+      <div class="qual-sub">Solo actas con autorización</div>
+      <div class="qual-bar"><div class="qual-bar-fill" style="width:20%;background:var(--warn)"></div></div>
+    </div>
+
+    <div class="qual-card">
+      <div class="qual-pct" style="color:var(--warn)">11.5%</div>
+      <div class="qual-name">Entrega a tercero</div>
+      <div class="qual-sub">Apoderado o autorización</div>
+      <div class="qual-bar"><div class="qual-bar-fill" style="width:11.5%;background:var(--warn)"></div></div>
+    </div>
+
+  </div>
+
+  <!-- SUMMARY STATS -->
+  <div class="section-header">
+    <div class="section-line"></div>
+    <span class="section-title">Base de datos total</span>
+  </div>
+  <div class="stat-grid" style="margin-bottom:28px;">
+    <div class="stat-card">
+      <div class="stat-icon">⚠️</div>
+      <div>
+        <div class="stat-num" style="color:var(--warn)">9,190</div>
+        <div class="stat-label">Con novedades</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">✅</div>
+      <div>
+        <div class="stat-num" style="color:var(--acc)">11,443</div>
+        <div class="stat-label">Sin novedades (estándar)</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">📑</div>
+      <div>
+        <div class="stat-num" style="color:var(--danger)">5,915</div>
+        <div class="stat-label">Duplicadas detectadas</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">🗄️</div>
+      <div>
+        <div class="stat-num" style="color:var(--txt)">26,551</div>
+        <div class="stat-label">Total en base de datos</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BAR CHARTS -->
+  <div class="section-header">
+    <div class="section-line"></div>
+    <span class="section-title">Distribución geográfica</span>
+  </div>
+  <div class="charts-row">
+    <div class="chart-card">
+      <div class="chart-title">Entregas por municipio (top 10)</div>
+      <div class="chart-sub">Total de actas registradas por municipio</div>
+      <div class="chart-wrap">
+        <canvas id="chartMunicipios"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Entregas por departamento</div>
+      <div class="chart-sub">Principales departamentos con cobertura</div>
+      <div class="chart-wrap">
+        <canvas id="chartDepartamentos"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- COBERTURA -->
+  <div class="section-header">
+    <div class="section-line"></div>
+    <span class="section-title">Cobertura — beneficiarios únicos por municipio</span>
+  </div>
+  <div class="coverage-card">
+    <div class="chart-sub">Barra oscura = personas distintas atendidas · Barra clara = total de actas. Top 10.</div>
+    <div class="chart-wrap-tall">
+      <canvas id="chartCobertura"></canvas>
+    </div>
+  </div>
+
+  <!-- TOP RESPONSABLES + CRÍTICOS -->
+  <div class="section-header">
+    <div class="section-line"></div>
+    <span class="section-title">Responsables de entrega</span>
+  </div>
+  <div class="two-col">
+    <div class="table-card">
+      <div class="chart-title" style="margin-bottom:14px;">Top responsables — por volumen</div>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Responsable</th>
+            <th style="text-align:right">Actas</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="topRespBody"></tbody>
+      </table>
+    </div>
+    <div class="table-card">
+      <div class="chart-title" style="margin-bottom:4px;">Responsables que requieren atención</div>
+      <div class="chart-sub" style="margin-bottom:14px;">Peor score de compliance entre responsables con ≥ 5 actas.</div>
+      <div id="criticosContainer"></div>
+    </div>
+  </div>
+
+  <!-- NOVEDADES POR CATEGORÍA -->
+  <div class="section-header">
+    <div class="section-line"></div>
+    <span class="section-title">Novedades por categoría · 9,728 total</span>
+  </div>
+  <div class="nov-grid" style="margin-bottom:28px;">
+    <div class="nov-item">
+      <div class="nov-icon">📅</div>
+      <div class="nov-info">
+        <div class="nov-cat">Fecha dudosa</div>
+        <div class="nov-desc">Fecha futura, muy anterior o ambigua</div>
+      </div>
+      <div class="nov-count">6,230</div>
+    </div>
+    <div class="nov-item">
+      <div class="nov-icon">🚫</div>
+      <div class="nov-info">
+        <div class="nov-cat">Autorización</div>
+        <div class="nov-desc">Firma no autorizada o faltante</div>
+      </div>
+      <div class="nov-count">2,232</div>
+    </div>
+    <div class="nov-item">
+      <div class="nov-icon">⚠️</div>
+      <div class="nov-info">
+        <div class="nov-cat">Inconsistencia</div>
+        <div class="nov-desc">Datos contradictorios o no coinciden</div>
+      </div>
+      <div class="nov-count">837</div>
+    </div>
+    <div class="nov-item">
+      <div class="nov-icon">✏️</div>
+      <div class="nov-info">
+        <div class="nov-cat">Enmendadura en productos</div>
+        <div class="nov-desc">Enmendaduras en tabla de ítems</div>
+      </div>
+      <div class="nov-count">206</div>
+    </div>
+    <div class="nov-item">
+      <div class="nov-icon">📋</div>
+      <div class="nov-info">
+        <div class="nov-cat">Caso especial</div>
+        <div class="nov-desc">Dos beneficiarios, sección faltante, etc.</div>
+      </div>
+      <div class="nov-count">120</div>
+    </div>
+    <div class="nov-item">
+      <div class="nov-icon">🔍</div>
+      <div class="nov-info">
+        <div class="nov-cat">Legibilidad</div>
+        <div class="nov-desc">Campos ilegibles o documento dañado</div>
+      </div>
+      <div class="nov-count">103</div>
+    </div>
+  </div>
+
+  <!-- HEATMAP -->
+  <div class="section-header">
+    <div class="section-line"></div>
+    <span class="section-title">Mapa de calor — novedades por municipio</span>
+  </div>
+  <div class="table-card" style="margin-bottom:40px;">
+    <div class="chart-sub" style="margin-bottom:12px;">Top 10 municipios con más novedades. Intensidad = frecuencia relativa.</div>
+    <div class="heat-wrap">
+      <table class="heat-table">
+        <thead>
+          <tr>
+            <th>Municipio</th>
+            <th style="text-align:right">🚫 Autorización</th>
+            <th style="text-align:right">✏️ Enmendadura</th>
+            <th style="text-align:right">⚠️ Inconsistencia</th>
+            <th style="text-align:right">📋 Caso</th>
+            <th style="text-align:right">🔍 Legibilidad</th>
+            <th style="text-align:right">📅 Fecha</th>
+          </tr>
+        </thead>
+        <tbody id="heatBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="footer-brand">
+    <div class="brand-mark" style="width:28px;height:28px;font-size:14px;">D</div>
+    <div class="footer-text"><strong>DocIntel Agent</strong> by LIFE·IN·CO · Plataforma multi-agente de auditoría documental</div>
+  </div>
+  <div class="footer-meta">Generado: 2026-06-11 · Producción · 26,551 actas auditadas</div>
+</footer>
+
+<script>
+// ── DATA ──
+const topResp = [
+  ['Rommy Aguilar Maya', 1782],
+  ['Jonny Alejandro Muñoz Garcia', 806],
+  ['Jessica Paola Zuluaga Gómez', 653],
+  ['Maria Sirley Ramos', 345],
+  ['Felipe Alvarado', 331],
+  ['Janis Ester Gutiérrez Hernández', 231],
+  ['Miladis Castro Gomez', 230],
+  ['Yeison Andres Lozano Zea', 218],
+  ['Miladys Castro Gomez', 181],
+  ['MIRLADYS MENA BECERRA', 180],
+];
+
+const criticos = [
+  ['Manuela Gonzalez Torres', 15.7, 14],
+  ['Beiselly Camacho Sinisterra', 20.0, 6],
+  ['Berselly Camacho Sinisterra', 20.0, 30],
+  ['Arly Day Castillo Ruiz', 20.6, 32],
+  ['Danna Lopez', 35.7, 51],
+  ['Yorlan Liliana Gonzalez', 36.1, 66],
+  ['Yoilan Liliana Gonzalez', 36.7, 6],
+  ['Hanna Viveros', 37.2, 50],
+  ['Mallely Balanta Balanta', 37.7, 35],
+  ['Jose S Vidal Torres', 40.0, 13],
+];
+
+const heatData = [
+  ['Cali',         450,  5,   135, 13, 21, 263],
+  ['Tumaco',        78,  0,    47, 18,  2, 679],
+  ['Turbo',         63,  0,    19,  4,  1, 666],
+  ['Quibdó',       107,  4,    35,  4,  1, 584],
+  ['Apartadó',      34,  0,    17,  1,  3, 472],
+  ['Valle del Cauca',148, 1,  136,  6,  4, 110],
+  ['Manizales',    112, 104,   81,  5,  1,  48],
+  ['Medellín',      77,  1,    13,  2,  4, 210],
+  ['Chigorodó',     12,  0,    15,  1,  3, 275],
+  ['Carepa',        20,  0,     9,  1,  2, 271],
+];
+
+// ── POPULATE TOP RESPONSABLES ──
+const maxResp = topResp[0][1];
+const tbody = document.getElementById('topRespBody');
+topResp.forEach(([name, count], i) => {
+  const pct = (count / maxResp * 100).toFixed(0);
+  tbody.innerHTML += `
+    <tr>
+      <td style="color:var(--muted);font-family:var(--mono);font-size:11px;width:24px">${(i+1).toString().padStart(2,'0')}</td>
+      <td>${name}</td>
+      <td class="td-num" style="color:var(--acc)">${count.toLocaleString('es-CO')}</td>
+      <td class="td-bar-wrap"><div class="td-bar"><div class="td-bar-fill" style="width:${pct}%"></div></div></td>
+    </tr>`;
+});
+
+// ── POPULATE CRÍTICOS ──
+const cont = document.getElementById('criticosContainer');
+criticos.forEach(([name, pct, actas]) => {
+  const seg = pct < 30 ? 'seg-danger' : pct < 70 ? 'seg-warn' : 'seg-ok';
+  const color = pct < 30 ? 'var(--danger)' : pct < 70 ? 'var(--warn)' : 'var(--acc)';
+  cont.innerHTML += `
+    <div class="resp-row">
+      <div class="resp-name">${name}</div>
+      <div class="resp-pct" style="color:${color}">${pct}%</div>
+      <div class="resp-actas">${actas} actas</div>
+      <div class="resp-seg ${seg}"></div>
+    </div>`;
+});
+
+// ── POPULATE HEATMAP ──
+function heatClass(v) {
+  if (!v) return 'heat-dash';
+  if (v < 10) return 'heat-1';
+  if (v < 50) return 'heat-2';
+  if (v < 200) return 'heat-3';
+  return 'heat-4';
+}
+const hb = document.getElementById('heatBody');
+heatData.forEach(([mun, ...vals]) => {
+  const cells = vals.map(v =>
+    `<td class="heat-cell ${heatClass(v)}">${v || '—'}</td>`
+  ).join('');
+  hb.innerHTML += `<tr><td style="font-size:13px;padding:8px 10px">${mun}</td>${cells}</tr>`;
+});
+
+// ── CHART.JS DEFAULTS ──
+Chart.defaults.color = '#7A9E98';
+Chart.defaults.font.family = "'Space Grotesk', sans-serif";
+
+const chartOpts = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { display: false },
+    tooltip: {
+      backgroundColor: '#111F1D',
+      borderColor: '#1E3330',
+      borderWidth: 1,
+      titleColor: '#E8F0EE',
+      bodyColor: '#7A9E98',
+    }
+  },
+  scales: {
+    x: {
+      grid: { color: '#1E3330', drawBorder: false },
+      ticks: { font: { size: 11 } }
+    },
+    y: {
+      grid: { color: '#1E3330', drawBorder: false },
+      ticks: { font: { size: 11 } }
+    }
+  }
+};
+
+// ── CHART MUNICIPIOS ──
+new Chart(document.getElementById('chartMunicipios'), {
+  type: 'bar',
+  data: {
+    labels: ['Cali','Quibdó','Tumaco','Turbo','Popayán','Apartadó','Pereira','Medellín','Manizales','Valle del Cauca'],
+    datasets: [{
+      data: [1873, 1810, 1445, 1312, 919, 900, 893, 776, 773, 721],
+      backgroundColor: 'rgba(47,191,143,0.7)',
+      hoverBackgroundColor: 'rgba(47,191,143,0.95)',
+      borderRadius: 5,
+      borderSkipped: false,
+    }]
+  },
+  options: { ...chartOpts }
+});
+
+// ── CHART DEPARTAMENTOS ──
+new Chart(document.getElementById('chartDepartamentos'), {
+  type: 'bar',
+  data: {
+    labels: ['Antioquia','Chocó','Nariño','Valle del Cauca','Cauca','Risaralda','Caldas'],
+    datasets: [{
+      data: [5930, 5028, 3099, 3027, 1597, 893, 806],
+      backgroundColor: 'rgba(201,168,76,0.7)',
+      hoverBackgroundColor: 'rgba(201,168,76,0.95)',
+      borderRadius: 5,
+      borderSkipped: false,
+    }]
+  },
+  options: { ...chartOpts }
+});
+
+// ── CHART COBERTURA ──
+new Chart(document.getElementById('chartCobertura'), {
+  type: 'bar',
+  data: {
+    labels: ['Cali','Quibdó','Tumaco','Medellín','Turbo','Popayán','Pereira','Valle del Cauca','Apartadó','Manizales'],
+    datasets: [
+      {
+        label: 'Beneficiarios únicos',
+        data: [1426, 1043, 779, 767, 738, 710, 688, 562, 521, 516],
+        backgroundColor: 'rgba(47,191,143,0.8)',
+        borderRadius: 4,
+        borderSkipped: false,
+      },
+      {
+        label: 'Total actas',
+        data: [1873, 1810, 1445, 776, 1312, 919, 893, 721, 900, 773],
+        backgroundColor: 'rgba(47,191,143,0.2)',
+        borderRadius: 4,
+        borderSkipped: false,
+      }
+    ]
+  },
+  options: {
+    ...chartOpts,
+    plugins: {
+      ...chartOpts.plugins,
+      legend: {
+        display: true,
+        labels: { color: '#7A9E98', font: { size: 11 }, boxWidth: 12, boxHeight: 12 }
+      }
+    }
+  }
+});
+</script>
+</body>
+</html>
