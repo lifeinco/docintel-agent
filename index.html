@@ -1,1457 +1,761 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>DocIntel Agent · Demo interactivo</title>
+<title>DocIntel Agent · LIFE·IN·CO</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
-<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
-<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
-<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
 <style>
-  html, body { margin: 0; padding: 0; height: 100%; }
-  body {
-    background: radial-gradient(120% 90% at 50% 0%, #0e1716 0%, #070d0c 55%, #050a09 100%);
-    overflow: hidden;
-  }
-  #root { height: 100%; }
+:root {
+  --bg:      #030507;
+  --acc:     #00E0C2;
+  --gold:    #C9A84C;
+  --danger:  #E05252;
+  --text:    #EDF6F2;
+  --muted:   #7E938D;
+  --panel:   #080D0C;
+  --border:  #131D1B;
+  --border2: #1A2E2A;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  overflow-x: hidden;
+}
+::selection { background: color-mix(in oklab, var(--acc) 30%, transparent); }
 
-  @keyframes di-spin { to { transform: rotate(360deg); } }
-  @keyframes di-pulse {
-    0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--di-acc) 28%, transparent); }
-    50% { box-shadow: 0 0 0 14px transparent; }
-  }
-  @keyframes di-scanline {
-    0%, 100% { top: 22%; } 50% { top: 76%; }
-  }
-  @keyframes di-viewscan {
-    0%, 100% { top: 8%; } 50% { top: 88%; }
-  }
-  @keyframes di-rise {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes di-pop {
-    0% { transform: scale(0.5); opacity: 0; }
-    70% { transform: scale(1.12); }
-    100% { transform: scale(1); opacity: 1; }
-  }
-  @keyframes di-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
-  @keyframes di-screen {
-    from { opacity: 0; transform: translateX(14px); }
-    to { opacity: 1; transform: translateX(0); }
-  }
-  .di-press:active { transform: scale(0.97); }
-  input::selection { background: color-mix(in oklab, var(--di-acc) 35%, transparent); }
+/* ── canvas + grid ─────────────────────────────────────────── */
+#starfield {
+  position: fixed; inset: 0; width: 100%; height: 100%;
+  z-index: 0; pointer-events: none;
+}
+.grid-overlay {
+  position: fixed; inset: 0; z-index: 1; pointer-events: none;
+  background:
+    linear-gradient(var(--border) 1px, transparent 1px) 0 0 / 100% 80px,
+    linear-gradient(90deg, var(--border) 1px, transparent 1px) 0 0 / 80px 100%;
+  opacity: 0.5;
+}
+.content { position: relative; z-index: 2; }
+
+/* ── helpers ───────────────────────────────────────────────── */
+.mono    { font-family: 'IBM Plex Mono', monospace; }
+.serif-it{ font-family: 'Instrument Serif', serif; font-style: italic; }
+
+/* ── nav ───────────────────────────────────────────────────── */
+nav {
+  position: sticky; top: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between; gap: 20px;
+  padding: 20px 48px;
+  background: color-mix(in oklab, var(--bg) 82%, transparent);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border);
+}
+.wordmark {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px; font-weight: 600; letter-spacing: 0.32em; color: var(--text);
+}
+.wordmark em { color: var(--acc); font-style: normal; }
+.lang-toggle { display: flex; gap: 4px; }
+.lang-btn {
+  background: none; border: 1px solid var(--border2); color: var(--muted);
+  font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  padding: 6px 14px; border-radius: 99px; cursor: pointer;
+  transition: all 0.25s;
+}
+.lang-btn.active {
+  border-color: var(--acc); color: var(--acc);
+  background: color-mix(in oklab, var(--acc) 9%, transparent);
+}
+
+/* ── sections ──────────────────────────────────────────────── */
+.wrap { max-width: 1060px; margin: 0 auto; padding: 0 48px; }
+
+/* ── reveal ────────────────────────────────────────────────── */
+.reveal {
+  opacity: 0; transform: translateY(24px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+.reveal.visible { opacity: 1; transform: translateY(0); }
+
+/* ── section label ─────────────────────────────────────────── */
+.sec-label {
+  font-family: 'IBM Plex Mono', monospace; font-size: 11.5px;
+  letter-spacing: 0.26em; color: var(--muted); text-transform: uppercase;
+  margin-bottom: 30px;
+}
+.sec-label em { color: var(--acc); font-style: normal; }
+
+/* ── badge ─────────────────────────────────────────────────── */
+.badge {
+  display: inline-flex; align-items: center; gap: 9px;
+  padding: 8px 18px; border-radius: 99px;
+  border: 1px solid color-mix(in oklab, var(--acc) 38%, transparent);
+  background: color-mix(in oklab, var(--acc) 7%, transparent);
+  font-family: 'IBM Plex Mono', monospace; font-size: 11.5px;
+  letter-spacing: 0.2em; color: var(--acc); text-transform: uppercase;
+}
+.badge-dot {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--acc);
+  animation: blink 1.4s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+/* ── hero heading ──────────────────────────────────────────── */
+h1.hero-h {
+  font-size: clamp(52px, 7.2vw, 96px);
+  font-weight: 700; letter-spacing: -0.03em; line-height: 1.02;
+  margin: 34px 0 0; text-transform: uppercase;
+}
+h1.hero-h .hero-it {
+  color: var(--acc);
+  font-family: 'Instrument Serif', serif;
+  font-style: italic; font-weight: 400;
+  text-transform: none; letter-spacing: -0.01em;
+}
+.hero-sub {
+  font-size: clamp(17px, 1.6vw, 21px); color: var(--muted);
+  line-height: 1.65; max-width: 560px; margin: 28px 0 0;
+}
+
+/* ── pipeline trace ────────────────────────────────────────── */
+.trace-wrap {
+  border: 1px solid var(--border); border-radius: 14px;
+  background: color-mix(in oklab, var(--panel) 76%, transparent);
+  padding: 20px 26px 24px; backdrop-filter: blur(4px); margin-top: 52px;
+}
+.trace-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 20px; flex-wrap: wrap; gap: 8px;
+}
+.trace-steps { display: flex; align-items: center; }
+.trace-step  { display: flex; flex-direction: column; align-items: center; gap: 8px; flex-shrink: 0; }
+.trace-dot {
+  width: 13px; height: 13px; border-radius: 50%;
+  border: 1.5px solid var(--border2); transition: all 0.4s;
+}
+.trace-dot.on {
+  border-color: var(--acc);
+  background: color-mix(in oklab, var(--acc) 28%, transparent);
+  box-shadow: 0 0 12px color-mix(in oklab, var(--acc) 55%, transparent);
+}
+.trace-step-lbl {
+  font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--muted); transition: color 0.4s;
+}
+.trace-step.on .trace-step-lbl { color: var(--text); }
+.trace-conn {
+  flex: 1; height: 2px;
+  background: repeating-linear-gradient(90deg, var(--border2) 0 7px, transparent 7px 14px);
+  margin: 0 8px 22px; min-width: 20px; position: relative; overflow: hidden;
+}
+.trace-conn.on::after {
+  content: ''; position: absolute; inset: 0;
+  background: repeating-linear-gradient(90deg, var(--acc) 0 7px, transparent 7px 14px);
+  animation: flow 0.75s linear infinite;
+}
+
+/* ── metrics ───────────────────────────────────────────────── */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 32px 44px;
+}
+.metric { border-top: 1px solid var(--border2); padding-top: 18px; }
+.metric-val {
+  font-size: clamp(36px, 4.5vw, 60px); font-weight: 700;
+  letter-spacing: -0.03em; line-height: 1;
+}
+.metric-val em { color: var(--acc); font-style: normal; }
+.metric-lbl { font-size: 16px; font-weight: 600; margin-top: 10px; }
+.metric-foot {
+  font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+  letter-spacing: 0.09em; color: var(--muted); margin-top: 6px;
+  text-transform: uppercase; line-height: 1.5;
+}
+
+/* ── cards ─────────────────────────────────────────────────── */
+.card {
+  background: color-mix(in oklab, var(--panel) 80%, transparent);
+  border: 1px solid var(--border); border-radius: 14px;
+  padding: 26px 30px; backdrop-filter: blur(4px);
+}
+.card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 18px; }
+.card-tag {
+  font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+  letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 12px;
+}
+.card-title { font-size: 19px; font-weight: 700; }
+.card-desc  { color: var(--muted); margin-top: 10px; font-size: 14px; line-height: 1.65; }
+
+/* ── browser mockup ────────────────────────────────────────── */
+.browser-frame {
+  border: 1px solid var(--border2); border-radius: 12px;
+  overflow: hidden; background: #0a0f0e;
+}
+.browser-bar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 16px;
+  background: color-mix(in oklab, var(--panel) 90%, transparent);
+  border-bottom: 1px solid var(--border);
+}
+.browser-dots { display: flex; gap: 6px; }
+.browser-dot  { width: 10px; height: 10px; border-radius: 50%; }
+.browser-url  {
+  flex: 1; background: var(--bg); border: 1px solid var(--border);
+  border-radius: 6px; padding: 5px 12px;
+  font-family: 'IBM Plex Mono', monospace; font-size: 11.5px;
+  color: var(--muted); letter-spacing: 0.04em;
+}
+.browser-iframe { width: 100%; height: 620px; border: none; display: block; }
+
+/* ── impact table ──────────────────────────────────────────── */
+.impact-table { width: 100%; border-collapse: collapse; }
+.impact-table th {
+  font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+  letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted);
+  text-align: left; padding: 12px 18px; border-bottom: 1px solid var(--border);
+}
+.impact-table td {
+  padding: 14px 18px; border-bottom: 1px solid var(--border);
+  font-size: 14px; line-height: 1.5; vertical-align: top;
+}
+.impact-table tr:last-child td { border-bottom: none; }
+.region { color: var(--acc); font-weight: 600; }
+
+/* ── SDGs ──────────────────────────────────────────────────── */
+.sdg-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
+.sdg {
+  padding: 10px 22px; border-radius: 8px;
+  font-size: 13px; font-weight: 600; color: #fff;
+  opacity: 0.92;
+}
+
+/* ── stack pills ───────────────────────────────────────────── */
+.stack-pills { display: flex; flex-wrap: wrap; gap: 10px; }
+.pill {
+  padding: 10px 18px; border-radius: 99px;
+  font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.05em;
+  border: 1px solid var(--border2);
+  background: color-mix(in oklab, var(--panel) 80%, transparent);
+  color: var(--text);
+}
+
+/* ── footer ────────────────────────────────────────────────── */
+footer.wrap {
+  border-top: 1px solid var(--border);
+  padding-top: 50px; padding-bottom: 60px;
+  display: flex; justify-content: space-between; align-items: baseline;
+  flex-wrap: wrap; gap: 20px;
+}
+
+/* ── keyframes ─────────────────────────────────────────────── */
+@keyframes blink { 0%,100%{ opacity:1 } 50%{ opacity:.15 } }
+@keyframes flow  { to{ background-position: 14px 0 } }
+
+/* ── responsive ────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  nav   { padding: 14px 20px; }
+  .wrap { padding: 0 20px; }
+  .browser-iframe { height: 420px; }
+}
+@media (prefers-reduced-motion: reduce) { *{ animation: none !important; transition: none !important; } }
 </style>
 </head>
 <body>
-<div id="root"></div>
 
-<script type="text/babel" data-presets="react">
-// @ds-adherence-ignore -- omelette starter scaffold (raw elements/hex/px by design)
+<canvas id="starfield"></canvas>
+<div class="grid-overlay"></div>
 
-/* BEGIN USAGE */
-// tweaks-panel.jsx
-// Reusable Tweaks shell + form-control helpers.
-// Exports (to window): useTweaks, TweaksPanel, TweakSection, TweakRow, TweakSlider,
-//   TweakToggle, TweakRadio, TweakSelect, TweakText, TweakNumber, TweakColor, TweakButton.
-//
-// Owns the host protocol (listens for __activate_edit_mode / __deactivate_edit_mode,
-// posts __edit_mode_available / __edit_mode_set_keys / __edit_mode_dismissed) so
-// individual prototypes don't re-roll it. Ships a consistent set of controls so you
-// don't hand-draw <input type="range">, segmented radios, steppers, etc.
-//
-// Usage (in an HTML file that loads React + Babel):
-//
-//   const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
-//     "primaryColor": "#D97757",
-//     "palette": ["#D97757", "#29261b", "#f6f4ef"],
-//     "fontSize": 16,
-//     "density": "regular",
-//     "dark": false
-//   }/*EDITMODE-END*/;
-//
-//   function App() {
-//     const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
-//     return (
-//       <div style={{ fontSize: t.fontSize, color: t.primaryColor }}>
-//         Hello
-//         <TweaksPanel>
-//           <TweakSection label="Typography" />
-//           <TweakSlider label="Font size" value={t.fontSize} min={10} max={32} unit="px"
-//                        onChange={(v) => setTweak('fontSize', v)} />
-//           <TweakRadio  label="Density" value={t.density}
-//                        options={['compact', 'regular', 'comfy']}
-//                        onChange={(v) => setTweak('density', v)} />
-//           <TweakSection label="Theme" />
-//           <TweakColor  label="Primary" value={t.primaryColor}
-//                        options={['#D97757', '#2A6FDB', '#1F8A5B', '#7A5AE0']}
-//                        onChange={(v) => setTweak('primaryColor', v)} />
-//           <TweakColor  label="Palette" value={t.palette}
-//                        options={[['#D97757', '#29261b', '#f6f4ef'],
-//                                  ['#475569', '#0f172a', '#f1f5f9']]}
-//                        onChange={(v) => setTweak('palette', v)} />
-//           <TweakToggle label="Dark mode" value={t.dark}
-//                        onChange={(v) => setTweak('dark', v)} />
-//         </TweaksPanel>
-//       </div>
-//     );
-//   }
-//
-// TweakRadio is the segmented control for 2–3 short options (auto-falls-back to
-// TweakSelect past ~16/~10 chars per label); reach for TweakSelect directly when
-// options are many or long. For color tweaks always curate 3-4 options rather than
-// a free picker; an option can also be a whole 2–5 color palette (the stored value
-// is the array). The Tweak* controls are a floor, not a ceiling — build custom
-// controls inside the panel if a tweak calls for UI they don't cover.
-/* END USAGE */
-// ─────────────────────────────────────────────────────────────────────────────
+<div class="content">
 
-const __TWEAKS_STYLE = `
-  .twk-panel{position:fixed;right:16px;bottom:16px;z-index:2147483646;width:280px;
-    max-height:calc(100vh - 32px);display:flex;flex-direction:column;
-    transform:scale(var(--dc-inv-zoom,1));transform-origin:bottom right;
-    background:rgba(250,249,247,.78);color:#29261b;
-    -webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);
-    border:.5px solid rgba(255,255,255,.6);border-radius:14px;
-    box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 12px 40px rgba(0,0,0,.18);
-    font:11.5px/1.4 ui-sans-serif,system-ui,-apple-system,sans-serif;overflow:hidden}
-  .twk-hd{display:flex;align-items:center;justify-content:space-between;
-    padding:10px 8px 10px 14px;cursor:move;user-select:none}
-  .twk-hd b{font-size:12px;font-weight:600;letter-spacing:.01em}
-  .twk-x{appearance:none;border:0;background:transparent;color:rgba(41,38,27,.55);
-    width:22px;height:22px;border-radius:6px;cursor:default;font-size:13px;line-height:1}
-  .twk-x:hover{background:rgba(0,0,0,.06);color:#29261b}
-  .twk-body{padding:2px 14px 14px;display:flex;flex-direction:column;gap:10px;
-    overflow-y:auto;overflow-x:hidden;min-height:0;
-    scrollbar-width:thin;scrollbar-color:rgba(0,0,0,.15) transparent}
-  .twk-body::-webkit-scrollbar{width:8px}
-  .twk-body::-webkit-scrollbar-track{background:transparent;margin:2px}
-  .twk-body::-webkit-scrollbar-thumb{background:rgba(0,0,0,.15);border-radius:4px;
-    border:2px solid transparent;background-clip:content-box}
-  .twk-body::-webkit-scrollbar-thumb:hover{background:rgba(0,0,0,.25);
-    border:2px solid transparent;background-clip:content-box}
-  .twk-row{display:flex;flex-direction:column;gap:5px}
-  .twk-row-h{flex-direction:row;align-items:center;justify-content:space-between;gap:10px}
-  .twk-lbl{display:flex;justify-content:space-between;align-items:baseline;
-    color:rgba(41,38,27,.72)}
-  .twk-lbl>span:first-child{font-weight:500}
-  .twk-val{color:rgba(41,38,27,.5);font-variant-numeric:tabular-nums}
+<!-- ══════════════════ NAV ══════════════════════════════════ -->
+<nav>
+  <div class="wordmark">LIFE<em>·</em>IN<em>·</em>CO</div>
+  <div class="lang-toggle">
+    <button class="lang-btn active" id="btn-en" onclick="setLang('en')">EN</button>
+    <button class="lang-btn"        id="btn-es" onclick="setLang('es')">ES</button>
+  </div>
+</nav>
 
-  .twk-sect{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
-    color:rgba(41,38,27,.45);padding:10px 0 0}
-  .twk-sect:first-child{padding-top:0}
+<!-- ══════════════════ HERO ═════════════════════════════════ -->
+<div class="wrap" style="padding-top:96px; padding-bottom:80px;">
+  <div class="badge reveal" style="transition-delay:.05s">
+    <span class="badge-dot"></span>
+    <span data-i18n="badge">Google Cloud Rapid Agent Hackathon 2026</span>
+  </div>
 
-  .twk-field{appearance:none;box-sizing:border-box;width:100%;min-width:0;height:26px;padding:0 8px;
-    border:.5px solid rgba(0,0,0,.1);border-radius:7px;
-    background:rgba(255,255,255,.6);color:inherit;font:inherit;outline:none}
-  .twk-field:focus{border-color:rgba(0,0,0,.25);background:rgba(255,255,255,.85)}
-  select.twk-field{padding-right:22px;
-    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='rgba(0,0,0,.5)' d='M0 0h10L5 6z'/></svg>");
-    background-repeat:no-repeat;background-position:right 8px center}
+  <h1 class="hero-h reveal" style="transition-delay:.15s">
+    <span data-i18n="heroLine1">AI that audits</span><br>
+    <span class="hero-it" data-i18n="heroLine2">what humans write.</span>
+  </h1>
 
-  .twk-slider{appearance:none;-webkit-appearance:none;width:100%;height:4px;margin:6px 0;
-    border-radius:999px;background:rgba(0,0,0,.12);outline:none}
-  .twk-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
-    width:14px;height:14px;border-radius:50%;background:#fff;
-    border:.5px solid rgba(0,0,0,.12);box-shadow:0 1px 3px rgba(0,0,0,.2);cursor:default}
-  .twk-slider::-moz-range-thumb{width:14px;height:14px;border-radius:50%;
-    background:#fff;border:.5px solid rgba(0,0,0,.12);box-shadow:0 1px 3px rgba(0,0,0,.2);cursor:default}
+  <p class="hero-sub reveal" data-i18n-html="heroSub" style="transition-delay:.25s">
+    <b style="color:var(--text)">DocIntel Agent</b> is LIFE·IN·CO's multi-tenant platform
+    that ingests, validates and audits handwritten documents at enterprise scale,
+    built on <span style="color:var(--text)">Vertex AI</span>.
+  </p>
 
-  .twk-seg{position:relative;display:flex;padding:2px;border-radius:8px;
-    background:rgba(0,0,0,.06);user-select:none}
-  .twk-seg-thumb{position:absolute;top:2px;bottom:2px;border-radius:6px;
-    background:rgba(255,255,255,.9);box-shadow:0 1px 2px rgba(0,0,0,.12);
-    transition:left .15s cubic-bezier(.3,.7,.4,1),width .15s}
-  .twk-seg.dragging .twk-seg-thumb{transition:none}
-  .twk-seg button{appearance:none;position:relative;z-index:1;flex:1;border:0;
-    background:transparent;color:inherit;font:inherit;font-weight:500;min-height:22px;
-    border-radius:6px;cursor:default;padding:4px 6px;line-height:1.2;
-    overflow-wrap:anywhere}
-
-  .twk-toggle{position:relative;width:32px;height:18px;border:0;border-radius:999px;
-    background:rgba(0,0,0,.15);transition:background .15s;cursor:default;padding:0}
-  .twk-toggle[data-on="1"]{background:#34c759}
-  .twk-toggle i{position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;
-    background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .15s}
-  .twk-toggle[data-on="1"] i{transform:translateX(14px)}
-
-  .twk-num{display:flex;align-items:center;box-sizing:border-box;min-width:0;height:26px;padding:0 0 0 8px;
-    border:.5px solid rgba(0,0,0,.1);border-radius:7px;background:rgba(255,255,255,.6)}
-  .twk-num-lbl{font-weight:500;color:rgba(41,38,27,.6);cursor:ew-resize;
-    user-select:none;padding-right:8px}
-  .twk-num input{flex:1;min-width:0;height:100%;border:0;background:transparent;
-    font:inherit;font-variant-numeric:tabular-nums;text-align:right;padding:0 8px 0 0;
-    outline:none;color:inherit;-moz-appearance:textfield}
-  .twk-num input::-webkit-inner-spin-button,.twk-num input::-webkit-outer-spin-button{
-    -webkit-appearance:none;margin:0}
-  .twk-num-unit{padding-right:8px;color:rgba(41,38,27,.45)}
-
-  .twk-btn{appearance:none;height:26px;padding:0 12px;border:0;border-radius:7px;
-    background:rgba(0,0,0,.78);color:#fff;font:inherit;font-weight:500;cursor:default}
-  .twk-btn:hover{background:rgba(0,0,0,.88)}
-  .twk-btn.secondary{background:rgba(0,0,0,.06);color:inherit}
-  .twk-btn.secondary:hover{background:rgba(0,0,0,.1)}
-
-  .twk-swatch{appearance:none;-webkit-appearance:none;width:56px;height:22px;
-    border:.5px solid rgba(0,0,0,.1);border-radius:6px;padding:0;cursor:default;
-    background:transparent;flex-shrink:0}
-  .twk-swatch::-webkit-color-swatch-wrapper{padding:0}
-  .twk-swatch::-webkit-color-swatch{border:0;border-radius:5.5px}
-  .twk-swatch::-moz-color-swatch{border:0;border-radius:5.5px}
-
-  .twk-chips{display:flex;gap:6px}
-  .twk-chip{position:relative;appearance:none;flex:1;min-width:0;height:46px;
-    padding:0;border:0;border-radius:6px;overflow:hidden;cursor:default;
-    box-shadow:0 0 0 .5px rgba(0,0,0,.12),0 1px 2px rgba(0,0,0,.06);
-    transition:transform .12s cubic-bezier(.3,.7,.4,1),box-shadow .12s}
-  .twk-chip:hover{transform:translateY(-1px);
-    box-shadow:0 0 0 .5px rgba(0,0,0,.18),0 4px 10px rgba(0,0,0,.12)}
-  .twk-chip[data-on="1"]{box-shadow:0 0 0 1.5px rgba(0,0,0,.85),
-    0 2px 6px rgba(0,0,0,.15)}
-  .twk-chip>span{position:absolute;top:0;bottom:0;right:0;width:34%;
-    display:flex;flex-direction:column;box-shadow:-1px 0 0 rgba(0,0,0,.1)}
-  .twk-chip>span>i{flex:1;box-shadow:0 -1px 0 rgba(0,0,0,.1)}
-  .twk-chip>span>i:first-child{box-shadow:none}
-  .twk-chip svg{position:absolute;top:6px;left:6px;width:13px;height:13px;
-    filter:drop-shadow(0 1px 1px rgba(0,0,0,.3))}
-`;
-
-// ── useTweaks ───────────────────────────────────────────────────────────────
-// Single source of truth for tweak values. setTweak persists via the host
-// (__edit_mode_set_keys → host rewrites the EDITMODE block on disk).
-function useTweaks(defaults) {
-  const [values, setValues] = React.useState(defaults);
-  // Accepts either setTweak('key', value) or setTweak({ key: value, ... }) so a
-  // useState-style call doesn't write a "[object Object]" key into the persisted
-  // JSON block.
-  const setTweak = React.useCallback((keyOrEdits, val) => {
-    const edits = typeof keyOrEdits === 'object' && keyOrEdits !== null
-      ? keyOrEdits : { [keyOrEdits]: val };
-    setValues((prev) => ({ ...prev, ...edits }));
-    window.parent.postMessage({ type: '__edit_mode_set_keys', edits }, '*');
-    // Same-window signal so in-page listeners (deck-stage rail thumbnails)
-    // can react — the parent message only reaches the host, not peers.
-    window.dispatchEvent(new CustomEvent('tweakchange', { detail: edits }));
-  }, []);
-  return [values, setTweak];
-}
-
-// ── TweaksPanel ─────────────────────────────────────────────────────────────
-// Floating shell. Registers the protocol listener BEFORE announcing
-// availability — if the announce ran first, the host's activate could land
-// before our handler exists and the toolbar toggle would silently no-op.
-// The close button posts __edit_mode_dismissed so the host's toolbar toggle
-// flips off in lockstep; the host echoes __deactivate_edit_mode back which
-// is what actually hides the panel.
-function TweaksPanel({ title = 'Tweaks', children }) {
-  const [open, setOpen] = React.useState(false);
-  const dragRef = React.useRef(null);
-  const offsetRef = React.useRef({ x: 16, y: 16 });
-  const PAD = 16;
-
-  const clampToViewport = React.useCallback(() => {
-    const panel = dragRef.current;
-    if (!panel) return;
-    const w = panel.offsetWidth, h = panel.offsetHeight;
-    const maxRight = Math.max(PAD, window.innerWidth - w - PAD);
-    const maxBottom = Math.max(PAD, window.innerHeight - h - PAD);
-    offsetRef.current = {
-      x: Math.min(maxRight, Math.max(PAD, offsetRef.current.x)),
-      y: Math.min(maxBottom, Math.max(PAD, offsetRef.current.y)),
-    };
-    panel.style.right = offsetRef.current.x + 'px';
-    panel.style.bottom = offsetRef.current.y + 'px';
-  }, []);
-
-  React.useEffect(() => {
-    if (!open) return;
-    clampToViewport();
-    if (typeof ResizeObserver === 'undefined') {
-      window.addEventListener('resize', clampToViewport);
-      return () => window.removeEventListener('resize', clampToViewport);
-    }
-    const ro = new ResizeObserver(clampToViewport);
-    ro.observe(document.documentElement);
-    return () => ro.disconnect();
-  }, [open, clampToViewport]);
-
-  React.useEffect(() => {
-    const onMsg = (e) => {
-      const t = e?.data?.type;
-      if (t === '__activate_edit_mode') setOpen(true);
-      else if (t === '__deactivate_edit_mode') setOpen(false);
-    };
-    window.addEventListener('message', onMsg);
-    window.parent.postMessage({ type: '__edit_mode_available' }, '*');
-    return () => window.removeEventListener('message', onMsg);
-  }, []);
-
-  const dismiss = () => {
-    setOpen(false);
-    window.parent.postMessage({ type: '__edit_mode_dismissed' }, '*');
-  };
-
-  const onDragStart = (e) => {
-    const panel = dragRef.current;
-    if (!panel) return;
-    const r = panel.getBoundingClientRect();
-    const sx = e.clientX, sy = e.clientY;
-    const startRight = window.innerWidth - r.right;
-    const startBottom = window.innerHeight - r.bottom;
-    const move = (ev) => {
-      offsetRef.current = {
-        x: startRight - (ev.clientX - sx),
-        y: startBottom - (ev.clientY - sy),
-      };
-      clampToViewport();
-    };
-    const up = () => {
-      window.removeEventListener('mousemove', move);
-      window.removeEventListener('mouseup', up);
-    };
-    window.addEventListener('mousemove', move);
-    window.addEventListener('mouseup', up);
-  };
-
-  if (!open) return null;
-  return (
-    <>
-      <style>{__TWEAKS_STYLE}</style>
-      <div ref={dragRef} className="twk-panel" data-omelette-chrome=""
-           style={{ right: offsetRef.current.x, bottom: offsetRef.current.y }}>
-        <div className="twk-hd" onMouseDown={onDragStart}>
-          <b>{title}</b>
-          <button className="twk-x" aria-label="Close tweaks"
-                  onMouseDown={(e) => e.stopPropagation()}
-                  onClick={dismiss}>✕</button>
-        </div>
-        <div className="twk-body">
-          {children}
-        </div>
-      </div>
-    </>
-  );
-}
-
-// ── Layout helpers ──────────────────────────────────────────────────────────
-
-function TweakSection({ label, children }) {
-  return (
-    <>
-      <div className="twk-sect">{label}</div>
-      {children}
-    </>
-  );
-}
-
-function TweakRow({ label, value, children, inline = false }) {
-  return (
-    <div className={inline ? 'twk-row twk-row-h' : 'twk-row'}>
-      <div className="twk-lbl">
-        <span>{label}</span>
-        {value != null && <span className="twk-val">{value}</span>}
-      </div>
-      {children}
+  <!-- pipeline trace -->
+  <div class="trace-wrap reveal" style="transition-delay:.42s">
+    <div class="trace-header">
+      <span class="mono" style="font-size:11.5px;letter-spacing:.12em;color:var(--muted)">
+        docintel-agent <span style="opacity:.4">·</span> production trace
+      </span>
+      <span class="mono" style="font-size:11.5px;color:var(--acc);display:flex;align-items:center;gap:8px">
+        <span style="width:6px;height:6px;border-radius:50%;background:var(--acc);animation:blink 1.4s ease-in-out infinite;display:inline-block"></span>
+        vertex-ai · gemini-2.5
+      </span>
     </div>
-  );
-}
+    <div class="trace-steps" id="trace-steps"></div>
+  </div>
+</div>
 
-// ── Controls ────────────────────────────────────────────────────────────────
-
-function TweakSlider({ label, value, min = 0, max = 100, step = 1, unit = '', onChange }) {
-  return (
-    <TweakRow label={label} value={`${value}${unit}`}>
-      <input type="range" className="twk-slider" min={min} max={max} step={step}
-             value={value} onChange={(e) => onChange(Number(e.target.value))} />
-    </TweakRow>
-  );
-}
-
-function TweakToggle({ label, value, onChange }) {
-  return (
-    <div className="twk-row twk-row-h">
-      <div className="twk-lbl"><span>{label}</span></div>
-      <button type="button" className="twk-toggle" data-on={value ? '1' : '0'}
-              role="switch" aria-checked={!!value}
-              onClick={() => onChange(!value)}><i /></button>
+<!-- ══════════════════ PROBLEM ══════════════════════════════ -->
+<div class="wrap" style="padding-top:80px;padding-bottom:80px">
+  <div class="sec-label reveal">
+    <span data-i18n="probLabel">THE PROBLEM</span>
+    <em> · </em>
+    <span data-i18n="probSub">Colombia &amp; LATAM</span>
+  </div>
+  <div class="metrics-grid">
+    <div class="metric reveal" style="transition-delay:.1s">
+      <div class="metric-val">18B<em> COP</em></div>
+      <div class="metric-lbl" data-i18n="p1lbl">Social funds at risk annually</div>
+      <div class="metric-foot" data-i18n="p1foot">JEP Colombia · Fundasalud · FINDETER</div>
     </div>
-  );
-}
-
-function TweakRadio({ label, value, options, onChange }) {
-  const trackRef = React.useRef(null);
-  const [dragging, setDragging] = React.useState(false);
-  // The active value is read by pointer-move handlers attached for the lifetime
-  // of a drag — ref it so a stale closure doesn't fire onChange for every move.
-  const valueRef = React.useRef(value);
-  valueRef.current = value;
-
-  // Segments wrap mid-word once per-segment width runs out. The track is
-  // ~248px (280 panel − 28 body pad − 4 seg pad), each button loses 12px
-  // to its own padding, and 11.5px system-ui averages ~6.3px/char — so 2
-  // options fit ~16 chars each, 3 fit ~10. Past that (or >3 options), fall
-  // back to a dropdown rather than wrap.
-  const labelLen = (o) => String(typeof o === 'object' ? o.label : o).length;
-  const maxLen = options.reduce((m, o) => Math.max(m, labelLen(o)), 0);
-  const fitsAsSegments = maxLen <= ({ 2: 16, 3: 10 }[options.length] ?? 0);
-  if (!fitsAsSegments) {
-    // <select> emits strings — map back to the original option value so the
-    // fallback stays type-preserving (numbers, booleans) like the segment path.
-    const resolve = (s) => {
-      const m = options.find((o) => String(typeof o === 'object' ? o.value : o) === s);
-      return m === undefined ? s : typeof m === 'object' ? m.value : m;
-    };
-    return <TweakSelect label={label} value={value} options={options}
-                        onChange={(s) => onChange(resolve(s))} />;
-  }
-  const opts = options.map((o) => (typeof o === 'object' ? o : { value: o, label: o }));
-  const idx = Math.max(0, opts.findIndex((o) => o.value === value));
-  const n = opts.length;
-
-  const segAt = (clientX) => {
-    const r = trackRef.current.getBoundingClientRect();
-    const inner = r.width - 4;
-    const i = Math.floor(((clientX - r.left - 2) / inner) * n);
-    return opts[Math.max(0, Math.min(n - 1, i))].value;
-  };
-
-  const onPointerDown = (e) => {
-    setDragging(true);
-    const v0 = segAt(e.clientX);
-    if (v0 !== valueRef.current) onChange(v0);
-    const move = (ev) => {
-      if (!trackRef.current) return;
-      const v = segAt(ev.clientX);
-      if (v !== valueRef.current) onChange(v);
-    };
-    const up = () => {
-      setDragging(false);
-      window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerup', up);
-    };
-    window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', up);
-  };
-
-  return (
-    <TweakRow label={label}>
-      <div ref={trackRef} role="radiogroup" onPointerDown={onPointerDown}
-           className={dragging ? 'twk-seg dragging' : 'twk-seg'}>
-        <div className="twk-seg-thumb"
-             style={{ left: `calc(2px + ${idx} * (100% - 4px) / ${n})`,
-                      width: `calc((100% - 4px) / ${n})` }} />
-        {opts.map((o) => (
-          <button key={o.value} type="button" role="radio" aria-checked={o.value === value}>
-            {o.label}
-          </button>
-        ))}
-      </div>
-    </TweakRow>
-  );
-}
-
-function TweakSelect({ label, value, options, onChange }) {
-  return (
-    <TweakRow label={label}>
-      <select className="twk-field" value={value} onChange={(e) => onChange(e.target.value)}>
-        {options.map((o) => {
-          const v = typeof o === 'object' ? o.value : o;
-          const l = typeof o === 'object' ? o.label : o;
-          return <option key={v} value={v}>{l}</option>;
-        })}
-      </select>
-    </TweakRow>
-  );
-}
-
-function TweakText({ label, value, placeholder, onChange }) {
-  return (
-    <TweakRow label={label}>
-      <input className="twk-field" type="text" value={value} placeholder={placeholder}
-             onChange={(e) => onChange(e.target.value)} />
-    </TweakRow>
-  );
-}
-
-function TweakNumber({ label, value, min, max, step = 1, unit = '', onChange }) {
-  const clamp = (n) => {
-    if (min != null && n < min) return min;
-    if (max != null && n > max) return max;
-    return n;
-  };
-  const startRef = React.useRef({ x: 0, val: 0 });
-  const onScrubStart = (e) => {
-    e.preventDefault();
-    startRef.current = { x: e.clientX, val: value };
-    const decimals = (String(step).split('.')[1] || '').length;
-    const move = (ev) => {
-      const dx = ev.clientX - startRef.current.x;
-      const raw = startRef.current.val + dx * step;
-      const snapped = Math.round(raw / step) * step;
-      onChange(clamp(Number(snapped.toFixed(decimals))));
-    };
-    const up = () => {
-      window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerup', up);
-    };
-    window.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', up);
-  };
-  return (
-    <div className="twk-num">
-      <span className="twk-num-lbl" onPointerDown={onScrubStart}>{label}</span>
-      <input type="number" value={value} min={min} max={max} step={step}
-             onChange={(e) => onChange(clamp(Number(e.target.value)))} />
-      {unit && <span className="twk-num-unit">{unit}</span>}
+    <div class="metric reveal" style="transition-delay:.2s">
+      <div class="metric-val">400<em>M+</em></div>
+      <div class="metric-lbl" data-i18n="p2lbl">Handwritten records never digitized</div>
+      <div class="metric-foot" data-i18n="p2foot">LATAM + Africa + South Asia</div>
     </div>
-  );
-}
+    <div class="metric reveal" style="transition-delay:.3s">
+      <div class="metric-val">$391</div>
+      <div class="metric-lbl" data-i18n="p3lbl">Cost per document — manual audit</div>
+      <div class="metric-foot" data-i18n="p3foot">DocIntel → &lt;$0.001 per doc</div>
+    </div>
+  </div>
+  <div class="card reveal" style="margin-top:40px;transition-delay:.4s">
+    <p style="font-size:18px;line-height:1.7;color:var(--muted)" data-i18n-html="probDesc">
+      In Colombia, <strong style="color:var(--text)">26,551+ JEP peace agreement actas</strong>,
+      thousands of FINDETER project records, and millions of social program beneficiary forms
+      exist only as handwritten paper — invisible to digital systems, impossible to audit at scale,
+      and vulnerable to fraud.
+    </p>
+  </div>
+</div>
 
-// Relative-luminance contrast pick — checkmarks drawn over a swatch need to
-// read on both #111 and #fafafa without per-option configuration. Hex input
-// only (#rgb / #rrggbb); named or rgb()/hsl() colors fall through to "light".
-function __twkIsLight(hex) {
-  const h = String(hex).replace('#', '');
-  const x = h.length === 3 ? h.replace(/./g, (c) => c + c) : h.padEnd(6, '0');
-  const n = parseInt(x.slice(0, 6), 16);
-  if (Number.isNaN(n)) return true;
-  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
-  return r * 299 + g * 587 + b * 114 > 148000;
-}
+<!-- ══════════════════ PRODUCTION ═══════════════════════════ -->
+<div class="wrap" style="padding-top:80px;padding-bottom:80px">
+  <div class="sec-label reveal">
+    <span data-i18n="prodLabel">IN PRODUCTION</span>
+    <em> · </em>
+    <span data-i18n="prodSub">Real data, real clients</span>
+  </div>
+  <div class="metrics-grid">
+    <div class="metric reveal" style="transition-delay:.1s">
+      <div class="metric-val">26<em>,551</em></div>
+      <div class="metric-lbl" data-i18n="m1lbl">Actas processed (JEP)</div>
+      <div class="metric-foot" data-i18n="m1foot">Colombia peace agreement records</div>
+    </div>
+    <div class="metric reveal" style="transition-delay:.2s">
+      <div class="metric-val">870<em>/day</em></div>
+      <div class="metric-lbl" data-i18n="m2lbl">Peak throughput</div>
+      <div class="metric-foot" data-i18n="m2foot">FINDETER Rueda de Negocios · ~$1 USD total</div>
+    </div>
+    <div class="metric reveal" style="transition-delay:.3s">
+      <div class="metric-val">&lt;<em>$0.001</em></div>
+      <div class="metric-lbl" data-i18n="m3lbl">Per document processed</div>
+      <div class="metric-foot" data-i18n="m3foot">vs $391 manual audit cost</div>
+    </div>
+    <div class="metric reveal" style="transition-delay:.4s">
+      <div class="metric-val">2</div>
+      <div class="metric-lbl" data-i18n="m4lbl">Active audit firms as clients</div>
+      <div class="metric-foot" data-i18n="m4foot">Colombian mid-market · 8B COP under management</div>
+    </div>
+  </div>
+</div>
 
-const __TwkCheck = ({ light }) => (
-  <svg viewBox="0 0 14 14" aria-hidden="true">
-    <path d="M3 7.2 5.8 10 11 4.2" fill="none" strokeWidth="2.2"
-          strokeLinecap="round" strokeLinejoin="round"
-          stroke={light ? 'rgba(0,0,0,.78)' : '#fff'} />
-  </svg>
-);
+<!-- ══════════════════ ARCHITECTURE ═════════════════════════ -->
+<div class="wrap" style="padding-top:80px;padding-bottom:80px">
+  <div class="sec-label reveal">
+    <span data-i18n="archLabel">ARCHITECTURE</span>
+    <em> · </em>
+    <span data-i18n="archSub">3-layer OCR cascade + multi-agent</span>
+  </div>
 
-// TweakColor — curated color/palette picker. Each option is either a single
-// hex string or an array of 1-5 hex strings; the card adapts — a lone color
-// renders solid, a palette renders colors[0] as the hero (left ~2/3) with the
-// rest stacked in a sharp column on the right. onChange emits the
-// option in the shape it was passed (string stays string, array stays array).
-// Without options it falls back to the native color input for back-compat.
-function TweakColor({ label, value, options, onChange }) {
-  if (!options || !options.length) {
-    return (
-      <div className="twk-row twk-row-h">
-        <div className="twk-lbl"><span>{label}</span></div>
-        <input type="color" className="twk-swatch" value={value}
-               onChange={(e) => onChange(e.target.value)} />
+  <!-- 3-layer OCR -->
+  <div class="card-grid">
+    <div class="card reveal" style="transition-delay:.1s">
+      <div class="card-tag" style="color:var(--acc)" data-i18n="l1tag">Layer 1 · pdfplumber</div>
+      <div class="card-title" data-i18n="l1title">Structured text extraction</div>
+      <div class="card-desc" data-i18n="l1desc">Native PDF text parsing. ~240ms/doc. $0 cost. Handles 60–70% of documents without AI.</div>
+    </div>
+    <div class="card reveal" style="transition-delay:.2s">
+      <div class="card-tag" style="color:var(--acc)" data-i18n="l2tag">Layer 2 · Gemini 2.5 Flash</div>
+      <div class="card-title" data-i18n="l2title">Vision OCR — handwriting</div>
+      <div class="card-desc" data-i18n="l2desc">Visual AI for handwritten fields, checkboxes, signatures. ~820ms/page. Covers remaining 30–40%.</div>
+    </div>
+    <div class="card reveal" style="transition-delay:.3s">
+      <div class="card-tag" style="color:var(--acc)" data-i18n="l3tag">Layer 3 · Gemini 2.5 Pro</div>
+      <div class="card-title" data-i18n="l3title">High-confidence validation</div>
+      <div class="card-desc" data-i18n="l3desc">Triggered only when confidence &lt;0.75. ~640ms. Legal-grade accuracy for critical fields.</div>
+    </div>
+  </div>
+
+  <!-- 2 agents -->
+  <div class="card-grid" style="margin-top:18px">
+    <div class="card reveal" style="transition-delay:.4s;border-color:color-mix(in oklab, var(--gold) 30%, transparent)">
+      <div class="card-tag" style="color:var(--gold)" data-i18n="a1tag">Agent A · Compliance</div>
+      <div class="card-title" data-i18n="a1title">Regulatory compliance check</div>
+      <div class="card-desc" data-i18n="a1desc">Structured output: compliance_score, campos_faltantes, veredicto (APPROVED / OBSERVATION / REJECTED), justification. Runs in parallel.</div>
+    </div>
+    <div class="card reveal" style="transition-delay:.5s;border-color:color-mix(in oklab, var(--danger) 30%, transparent)">
+      <div class="card-tag" style="color:var(--danger)" data-i18n="a2tag">Agent B · Anti-Fraud</div>
+      <div class="card-title" data-i18n="a2title">Anomaly &amp; duplicate detection</div>
+      <div class="card-desc" data-i18n="a2desc">Fraud risk score, duplicate probability, pattern alerts. Runs in parallel with Compliance on every single document.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ LIVE DEMO ════════════════════════════ -->
+<div class="wrap" style="padding-top:80px;padding-bottom:80px">
+  <div class="sec-label reveal">
+    <span data-i18n="demoLabel">LIVE DEMO</span>
+    <em> · </em>
+    <span data-i18n="demoSub">Interactive prototype</span>
+  </div>
+  <div class="browser-frame reveal" style="transition-delay:.1s">
+    <div class="browser-bar">
+      <div class="browser-dots">
+        <div class="browser-dot" style="background:#FF5F57"></div>
+        <div class="browser-dot" style="background:#FEBC2E"></div>
+        <div class="browser-dot" style="background:#28C840"></div>
       </div>
-    );
-  }
-  // Native <input type=color> emits lowercase hex per the HTML spec, so
-  // compare case-insensitively. String() guards JSON.stringify(undefined),
-  // which returns the primitive undefined (no .toLowerCase).
-  const key = (o) => String(JSON.stringify(o)).toLowerCase();
-  const cur = key(value);
-  return (
-    <TweakRow label={label}>
-      <div className="twk-chips" role="radiogroup">
-        {options.map((o, i) => {
-          const colors = Array.isArray(o) ? o : [o];
-          const [hero, ...rest] = colors;
-          const sup = rest.slice(0, 4);
-          const on = key(o) === cur;
-          return (
-            <button key={i} type="button" className="twk-chip" role="radio"
-                    aria-checked={on} data-on={on ? '1' : '0'}
-                    aria-label={colors.join(', ')} title={colors.join(' · ')}
-                    style={{ background: hero }}
-                    onClick={() => onChange(o)}>
-              {sup.length > 0 && (
-                <span>
-                  {sup.map((c, j) => <i key={j} style={{ background: c }} />)}
-                </span>
-              )}
-              {on && <__TwkCheck light={__twkIsLight(hero)} />}
-            </button>
-          );
-        })}
-      </div>
-    </TweakRow>
-  );
-}
+      <div class="browser-url">lifeinco.github.io/docintel-agent/app.html</div>
+    </div>
+    <iframe
+      class="browser-iframe"
+      src="https://lifeinco.github.io/docintel-agent/app.html"
+      loading="lazy"
+      title="DocIntel Agent Prototype"
+      sandbox="allow-scripts allow-same-origin allow-forms"
+    ></iframe>
+  </div>
+</div>
 
-function TweakButton({ label, onClick, secondary = false }) {
-  return (
-    <button type="button" className={secondary ? 'twk-btn secondary' : 'twk-btn'}
-            onClick={onClick}>{label}</button>
-  );
-}
+<!-- ══════════════════ GLOBAL IMPACT ════════════════════════ -->
+<div class="wrap" style="padding-top:80px;padding-bottom:80px">
+  <div class="sec-label reveal">
+    <span data-i18n="impLabel">GLOBAL IMPACT</span>
+    <em> · </em>
+    <span data-i18n="impSub">Scalability roadmap</span>
+  </div>
 
-Object.assign(window, {
-  useTweaks, TweaksPanel, TweakSection, TweakRow,
-  TweakSlider, TweakToggle, TweakRadio, TweakSelect,
-  TweakText, TweakNumber, TweakColor, TweakButton,
-});
+  <div class="card reveal" style="transition-delay:.1s;padding:0;overflow:hidden">
+    <table class="impact-table">
+      <thead>
+        <tr>
+          <th data-i18n="ic1">Region</th>
+          <th data-i18n="ic2">Program</th>
+          <th data-i18n="ic3">Scale</th>
+          <th data-i18n="ic4">Opportunity</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="region">Colombia</td>
+          <td>JEP · FINDETER · Social programs</td>
+          <td>26,551+ actas in production</td>
+          <td>8B COP audited</td>
+        </tr>
+        <tr>
+          <td class="region">México</td>
+          <td data-i18n="ir2p">Bienestar</td>
+          <td data-i18n="ir2s">30M beneficiaries</td>
+          <td data-i18n="ir2o">~$45M USD TAM</td>
+        </tr>
+        <tr>
+          <td class="region">Brasil</td>
+          <td>Bolsa Família</td>
+          <td data-i18n="ir3s">21M families</td>
+          <td data-i18n="ir3o">~$32M USD TAM</td>
+        </tr>
+        <tr>
+          <td class="region" data-i18n="ir4r">Sub-Saharan Africa</td>
+          <td data-i18n="ir4p">Cash transfer programs</td>
+          <td data-i18n="ir4s">200M+ beneficiaries</td>
+          <td data-i18n="ir4o">Largest untapped market</td>
+        </tr>
+        <tr>
+          <td class="region" data-i18n="ir5r">South Asia</td>
+          <td data-i18n="ir5p">MNREGA · PM-KISAN</td>
+          <td data-i18n="ir5s">150M+ recipients</td>
+          <td data-i18n="ir5o">India + Bangladesh + Pakistan</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 
-</script>
+  <div class="sdg-row">
+    <div class="sdg reveal" style="background:#E5243B;transition-delay:.15s" data-i18n="sdg1">SDG 1 · No Poverty</div>
+    <div class="sdg reveal" style="background:#DD1367;transition-delay:.2s"  data-i18n="sdg10">SDG 10 · Reduced Inequalities</div>
+    <div class="sdg reveal" style="background:#00689D;transition-delay:.25s" data-i18n="sdg16">SDG 16 · Peace, Justice &amp; Institutions</div>
+    <div class="sdg reveal" style="background:#19486A;transition-delay:.3s"  data-i18n="sdg17">SDG 17 · Partnerships for the Goals</div>
+  </div>
+</div>
 
-<script type="text/babel" data-presets="react">
-// DocIntel UI kit — marco de dispositivo, status bar y componentes compartidos
-// Exporta a window: DIFrame, DIStatusBar, DIModuleTag, DIBtn, DIField, DIChip, DIIcons
+<!-- ══════════════════ OBJECTIVES ═══════════════════════════ -->
+<div class="wrap" style="padding-top:80px;padding-bottom:80px">
+  <div class="sec-label reveal">
+    <span data-i18n="objLabel">COMMERCIAL OBJECTIVES</span>
+    <em> · </em>Q4 2026
+  </div>
+  <div class="metrics-grid">
+    <div class="metric reveal" style="transition-delay:.1s">
+      <div class="metric-val">10M<em>+</em></div>
+      <div class="metric-lbl" data-i18n="o1lbl">Annual documents processed</div>
+      <div class="metric-foot">Document AI · Cloud Run · serverless</div>
+    </div>
+    <div class="metric reveal" style="transition-delay:.2s">
+      <div class="metric-val">25<em>+</em></div>
+      <div class="metric-lbl" data-i18n="o2lbl">Enterprise clients</div>
+      <div class="metric-foot">Multi-tenant · Latin America</div>
+    </div>
+    <div class="metric reveal" style="transition-delay:.3s">
+      <div class="metric-val">$1.3M</div>
+      <div class="metric-lbl" data-i18n="o3lbl">ARR target</div>
+      <div class="metric-foot">SaaS · unit economics with BigQuery</div>
+    </div>
+  </div>
+</div>
 
-const DI_FONT_MONO = "'IBM Plex Mono', monospace";
-const DI_FONT_SANS = "'Space Grotesk', system-ui, sans-serif";
+<!-- ══════════════════ STACK ════════════════════════════════ -->
+<div class="wrap" style="padding-top:80px;padding-bottom:100px">
+  <div class="sec-label reveal">
+    <span data-i18n="stLabel">TECHNOLOGY STACK</span>
+    <em> · </em>
+    <span data-i18n="stSub">Agentic Orchestration Platform</span>
+  </div>
+  <div class="stack-pills reveal" style="transition-delay:.1s">
+    <span class="pill">Vertex AI · Gemini 2.5 Flash + Pro</span>
+    <span class="pill">Document AI</span>
+    <span class="pill">Cloud Run</span>
+    <span class="pill">BigQuery</span>
+    <span class="pill">AlloyDB</span>
+    <span class="pill">Cloud Storage</span>
+    <span class="pill">Flutter + ML Kit</span>
+    <span class="pill">Python + FastAPI</span>
+    <span class="pill">N8N</span>
+    <span class="pill">Google Cloud for Startups</span>
+  </div>
 
-// ── Iconos (trazos simples, currentColor) ─────────────────────
-const DIIcons = {
-  Fingerprint: ({ size = 44 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-      <path d="M6 12a6 6 0 0 1 12 0c0 3.5-.6 6-1.5 8" />
-      <path d="M9.5 12a2.5 2.5 0 0 1 5 0c0 3-.4 5.5-1.2 7.5" />
-      <path d="M12 12v.5c0 2.6-.4 4.8-1.1 6.7" />
-      <path d="M3.5 9.5A9 9 0 0 1 12 3a9 9 0 0 1 8.5 6.5" />
-    </svg>
-  ),
-  Camera: ({ size = 22 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="7" width="18" height="13" rx="2.5" />
-      <path d="M8.5 7l1.2-2.2h4.6L15.5 7" />
-      <circle cx="12" cy="13.5" r="3.4" />
-    </svg>
-  ),
-  Check: ({ size = 14 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 12.5l5.5 5.5L20 6.5" />
-    </svg>
-  ),
-  Back: ({ size = 20 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M14.5 5.5L8 12l6.5 6.5" />
-    </svg>
-  ),
-  Pin: ({ size = 15 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-      <path d="M12 21s-6.5-5.2-6.5-10.3A6.5 6.5 0 0 1 12 4a6.5 6.5 0 0 1 6.5 6.7C18.5 15.8 12 21 12 21z" />
-      <circle cx="12" cy="10.7" r="2.2" />
-    </svg>
-  ),
-  Sync: ({ size = 15, spinning = false }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
-      style={spinning ? { animation: 'di-spin 1s linear infinite' } : null}>
-      <path d="M20 6v5h-5" />
-      <path d="M4 18v-5h5" />
-      <path d="M19.5 11a8 8 0 0 0-14-4M4.5 13a8 8 0 0 0 14 4" />
-    </svg>
-  ),
-  User: ({ size = 18 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-      <circle cx="12" cy="8" r="3.6" />
-      <path d="M5 20a7 7 0 0 1 14 0" />
-    </svg>
-  ),
-  Doc: ({ size = 16 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M7 3h7l4 4v14H7z" />
-      <path d="M14 3v4h4" />
-    </svg>
-  ),
-  Plus: ({ size = 18 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
-      <path d="M12 5v14M5 12h14" />
-    </svg>
-  ),
-  WifiOff: ({ size = 13 }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-      <path d="M5 10a11 11 0 0 1 14 0" opacity="0.4" />
-      <path d="M8.5 13.5a6 6 0 0 1 7 0" opacity="0.7" />
-      <circle cx="12" cy="17.5" r="1.4" fill="currentColor" stroke="none" />
-      <path d="M4 4l16 16" />
-    </svg>
-  ),
-};
-
-// ── Barras de señal ───────────────────────────────────────────
-function DISignal({ online }) {
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'flex-end', gap: 2, height: 11 }}>
-      {[4, 6, 8, 11].map((h, i) => (
-        <span key={i} style={{
-          width: 3, height: h, borderRadius: 1,
-          background: online ? 'currentColor' : 'currentColor',
-          opacity: online ? 1 : (i < 1 ? 0.9 : 0.25),
-          transition: 'opacity .4s',
-        }}></span>
-      ))}
+  <div class="reveal" style="margin-top:64px;padding-top:24px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:baseline;gap:20px;flex-wrap:wrap;transition-delay:.2s">
+    <span style="font-size:19px">
+      <span class="serif-it" style="color:var(--acc)" data-i18n="tagline">The operating system</span>
+      <span data-i18n="taglineRest"> for highly regulated industries.</span>
     </span>
-  );
-}
+    <span class="mono" style="font-size:11.5px;letter-spacing:.18em;color:var(--muted)">lifeinco.co</span>
+  </div>
+</div>
 
-// ── Status bar personalizada ──────────────────────────────────
-function DIStatusBar({ time = '9:41', online = false }) {
-  return (
-    <div style={{
-      height: 44, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      padding: '0 24px 0 28px', fontFamily: DI_FONT_MONO, fontSize: 12.5,
-      letterSpacing: '0.08em', color: 'var(--di-text)', flexShrink: 0,
-    }}>
-      <span style={{ fontWeight: 600 }}>{time}</span>
-      <span style={{
-        display: 'inline-flex', alignItems: 'center', gap: 7,
-        color: online ? 'var(--di-acc)' : 'var(--di-muted)',
-        transition: 'color .4s', fontSize: 11, fontWeight: 600,
-      }}>
-        <span>{online ? 'LTE' : 'SIN RED'}</span>
-        {!online && <DIIcons.WifiOff />}
-        <DISignal online={online} />
-      </span>
-    </div>
-  );
-}
+<!-- ══════════════════ FOOTER ════════════════════════════════ -->
+<footer class="wrap">
+  <div class="wordmark" style="font-size:15px">LIFE<em>·</em>IN<em>·</em>CO</div>
+  <span class="mono" style="font-size:11px;letter-spacing:.2em;color:var(--muted);text-transform:uppercase" data-i18n="footRight">Vision · Precision · Execution</span>
+</footer>
 
-// ── Marco del dispositivo ─────────────────────────────────────
-function DIFrame({ children, time, online }) {
-  return (
-    <div style={{
-      width: 392, height: 832, borderRadius: 48, boxSizing: 'border-box',
-      background: '#04080a', padding: 10, position: 'relative',
-      boxShadow: '0 0 0 1.5px #2a3835, 0 2px 0 1.5px #161f1e, 0 40px 90px rgba(0,0,0,0.65), 0 12px 30px rgba(0,0,0,0.5)',
-      flexShrink: 0,
-    }}>
-      {/* botones laterales */}
-      <div style={{ position: 'absolute', right: -3.5, top: 180, width: 3.5, height: 64, borderRadius: '0 3px 3px 0', background: '#222e2c' }}></div>
-      <div style={{ position: 'absolute', left: -3.5, top: 150, width: 3.5, height: 38, borderRadius: '3px 0 0 3px', background: '#222e2c' }}></div>
-      <div style={{ position: 'absolute', left: -3.5, top: 200, width: 3.5, height: 38, borderRadius: '3px 0 0 3px', background: '#222e2c' }}></div>
-      <div style={{
-        width: '100%', height: '100%', borderRadius: 39, overflow: 'hidden',
-        background: 'var(--di-bg)', display: 'flex', flexDirection: 'column',
-        position: 'relative',
-      }}>
-        <DIStatusBar time={time} online={online} />
-        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', position: 'relative' }}>
-          {children}
-        </div>
-        {/* pill de navegación */}
-        <div style={{ height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <div style={{ width: 120, height: 4, borderRadius: 2, background: 'var(--di-text)', opacity: 0.3 }}></div>
-        </div>
-      </div>
-    </div>
-  );
-}
+</div><!-- /content -->
 
-// ── Etiqueta de módulo ────────────────────────────────────────
-function DIModuleTag({ n, title, onBack }) {
-  return (
-    <div style={{ padding: '8px 26px 0', flexShrink: 0 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 24 }}>
-        {onBack && (
-          <button onClick={onBack} style={{
-            background: 'none', border: 'none', color: 'var(--di-muted)', cursor: 'pointer',
-            padding: 0, margin: '0 0 0 -4px', display: 'flex', alignItems: 'center',
-          }}>
-            <DIIcons.Back />
-          </button>
-        )}
-        <span style={{
-          fontFamily: DI_FONT_MONO, fontSize: 12, letterSpacing: '0.22em',
-          color: 'var(--di-acc)', fontWeight: 600, textTransform: 'uppercase',
-        }}>{n}</span>
-      </div>
-      <h1 style={{
-        fontFamily: DI_FONT_SANS, fontSize: 27, fontWeight: 600, color: 'var(--di-text)',
-        margin: '6px 0 0', lineHeight: 1.15, letterSpacing: '-0.01em',
-      }}>{title}</h1>
-    </div>
-  );
-}
+<!-- ══════════════════ SCRIPTS ════════════════════════════════ -->
+<script>
+/* ── Starfield ──────────────────────────────────────────────── */
+(function () {
+  const cv = document.getElementById('starfield');
+  const cx = cv.getContext('2d');
+  let W, H, stars = [];
 
-// ── Botón ─────────────────────────────────────────────────────
-function DIBtn({ children, onClick, kind = 'primary', disabled = false, style = {} }) {
-  const base = {
-    fontFamily: DI_FONT_SANS, fontSize: 16.5, fontWeight: 600, letterSpacing: '0.01em',
-    borderRadius: 12, padding: '15px 20px', cursor: disabled ? 'default' : 'pointer',
-    width: '100%', boxSizing: 'border-box', transition: 'all .18s',
-    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9,
-  };
-  const kinds = {
-    primary: {
-      background: disabled ? 'var(--di-panel2)' : 'var(--di-acc)',
-      color: disabled ? 'var(--di-muted)' : '#04231a',
-      border: '1px solid transparent',
-      boxShadow: disabled ? 'none' : '0 6px 22px color-mix(in oklab, var(--di-acc) 26%, transparent)',
-    },
-    ghost: {
-      background: 'transparent', color: 'var(--di-text)',
-      border: '1px solid var(--di-border2)',
-    },
-  };
-  return (
-    <button onClick={disabled ? undefined : onClick} className={disabled ? '' : 'di-press'}
-      style={{ ...base, ...kinds[kind], ...style }}>{children}</button>
-  );
-}
+  function resize() {
+    W = cv.width  = window.innerWidth;
+    H = cv.height = window.innerHeight;
+  }
+  function initStars(n) {
+    stars = Array.from({ length: n }, () => ({
+      x:     Math.random() * W,
+      y:     Math.random() * H,
+      r:     Math.random() * 1.3 + 0.2,
+      base:  Math.random() * 0.65 + 0.15,
+      speed: Math.random() * 0.11 + 0.025,
+      phase: Math.random() * Math.PI * 2,
+      freq:  Math.random() * 0.022 + 0.007,
+    }));
+  }
+  function draw() {
+    cx.clearRect(0, 0, W, H);
+    for (const s of stars) {
+      s.y -= s.speed;
+      if (s.y < 0) { s.y = H; s.x = Math.random() * W; }
+      s.phase += s.freq;
+      const a = s.base * (0.5 + 0.5 * Math.sin(s.phase));
+      cx.beginPath();
+      cx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      cx.fillStyle = `rgba(190,215,255,${a})`;
+      cx.fill();
+    }
+    requestAnimationFrame(draw);
+  }
+  resize(); initStars(230); draw();
+  window.addEventListener('resize', () => { resize(); initStars(230); });
+})();
 
-// ── Campo de formulario ───────────────────────────────────────
-function DIField({ label, value, onChange, conf, mono = false }) {
-  return (
-    <label style={{ display: 'block' }}>
-      <span style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-        fontFamily: DI_FONT_MONO, fontSize: 10.5, letterSpacing: '0.2em',
-        color: 'var(--di-muted)', textTransform: 'uppercase', marginBottom: 7,
-      }}>
-        <span>{label}</span>
-        {conf && <span style={{ color: 'var(--di-acc)', letterSpacing: '0.06em' }}>OCR {conf}</span>}
-      </span>
-      <input value={value} onChange={(e) => onChange(e.target.value)} spellCheck="false" style={{
-        width: '100%', boxSizing: 'border-box', background: 'var(--di-panel)',
-        border: '1px solid var(--di-border2)', borderRadius: 10, padding: '13px 15px',
-        color: 'var(--di-text)', fontFamily: mono ? DI_FONT_MONO : DI_FONT_SANS,
-        fontSize: 16.5, fontWeight: 500, outline: 'none', transition: 'border-color .15s',
-      }}
-        onFocus={(e) => { e.target.style.borderColor = 'var(--di-acc)'; }}
-        onBlur={(e) => { e.target.style.borderColor = 'var(--di-border2)'; }}
-      />
-    </label>
-  );
-}
+/* ── Pipeline trace ─────────────────────────────────────────── */
+(function () {
+  const STEPS = ['ingest', 'ocr', 'validate', 'qa', 'output'];
+  const container = document.getElementById('trace-steps');
+  if (!container) return;
 
-// ── Chip ──────────────────────────────────────────────────────
-function DIChip({ children, tone = 'neutral', style = {} }) {
-  const tones = {
-    neutral: { color: 'var(--di-muted)', border: '1px solid var(--di-border2)', background: 'transparent' },
-    acc: { color: 'var(--di-acc)', border: '1px solid color-mix(in oklab, var(--di-acc) 40%, transparent)', background: 'color-mix(in oklab, var(--di-acc) 8%, transparent)' },
-    solid: { color: 'var(--di-text)', border: '1px solid var(--di-border2)', background: 'var(--di-panel)' },
-  };
-  return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: 7, padding: '6px 12px',
-      borderRadius: 99, fontFamily: DI_FONT_MONO, fontSize: 11.5, letterSpacing: '0.06em',
-      whiteSpace: 'nowrap', ...tones[tone], ...style,
-    }}>{children}</span>
-  );
-}
+  STEPS.forEach((label, i) => {
+    const step = Object.assign(document.createElement('div'), { className: 'trace-step', id: `ts${i}` });
+    step.innerHTML = `<div class="trace-dot" id="td${i}"></div><span class="trace-step-lbl">${label}</span>`;
+    container.appendChild(step);
+    if (i < STEPS.length - 1) {
+      const conn = Object.assign(document.createElement('div'), { className: 'trace-conn', id: `tc${i}` });
+      container.appendChild(conn);
+    }
+  });
 
-Object.assign(window, { DIFrame, DIStatusBar, DIModuleTag, DIBtn, DIField, DIChip, DIIcons, DISignal, DI_FONT_MONO, DI_FONT_SANS });
+  let active = STEPS.length - 1;
+  function paint(a) {
+    STEPS.forEach((_, i) => {
+      const isOn = i <= a;
+      document.getElementById(`td${i}`).className = 'trace-dot' + (isOn ? ' on' : '');
+      document.getElementById(`ts${i}`).className = 'trace-step' + (isOn ? ' on' : '');
+      const conn = document.getElementById(`tc${i}`);
+      if (conn) conn.className = 'trace-conn' + (i < a ? ' on' : '');
+    });
+  }
+  paint(active);
+  setInterval(() => { active = (active + 1) % (STEPS.length + 2); paint(Math.min(active, STEPS.length - 1)); }, 900);
+})();
 
-</script>
+/* ── Scroll reveal ──────────────────────────────────────────── */
+(function () {
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); }
+    });
+  }, { threshold: 0.08 });
+  document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+})();
 
-<script type="text/babel" data-presets="react">
-// DocIntel — pantallas del flujo
-// Exporta a window: AuthScreen, HomeScreen, CaptureScreen, FormScreen, SuccessScreen
-
-const { useState, useEffect, useRef } = React;
-
-// ── MÓDULO 01 · Autenticación ─────────────────────────────────
-function AuthScreen({ operador, onDone }) {
-  const [fase, setFase] = useState('idle'); // idle | scan | ok
-  const timers = useRef([]);
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
-
-  const verificar = () => {
-    if (fase !== 'idle') return;
-    setFase('scan');
-    timers.current.push(setTimeout(() => setFase('ok'), 1900));
-    timers.current.push(setTimeout(() => onDone(), 3100));
-  };
-
-  const ringColor = fase === 'ok' ? 'var(--di-acc)' : 'color-mix(in oklab, var(--di-acc) 45%, transparent)';
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-      <DIModuleTag n="Módulo 01" title="Autenticación del operador" />
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 26px', gap: 0 }}>
-        <div style={{
-          fontFamily: DI_FONT_MONO, fontSize: 13, letterSpacing: '0.42em', color: 'var(--di-muted)',
-          textTransform: 'uppercase', marginBottom: 38,
-        }}>Docintel Agent</div>
-
-        {/* sensor de huella */}
-        <button onClick={verificar} aria-label="Verificar huella" style={{
-          width: 148, height: 148, borderRadius: '50%', cursor: fase === 'idle' ? 'pointer' : 'default',
-          background: fase === 'ok' ? 'color-mix(in oklab, var(--di-acc) 12%, transparent)' : 'transparent',
-          border: `1.5px solid ${ringColor}`, position: 'relative',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: fase === 'ok' ? 'var(--di-acc)' : 'color-mix(in oklab, var(--di-acc) 75%, var(--di-text))',
-          transition: 'all .4s',
-          animation: fase === 'idle' ? 'di-pulse 2.6s ease-in-out infinite' : 'none',
-        }}>
-          {fase === 'scan' && (
-            <svg width="148" height="148" viewBox="0 0 148 148" style={{ position: 'absolute', inset: 0, animation: 'di-spin 1.1s linear infinite' }}>
-              <circle cx="74" cy="74" r="72.5" fill="none" stroke="var(--di-acc)" strokeWidth="2.5"
-                strokeDasharray="120 340" strokeLinecap="round" />
-            </svg>
-          )}
-          {fase === 'ok'
-            ? <span style={{ animation: 'di-pop .35s ease-out' }}><DIIcons.Check size={52} /></span>
-            : <DIIcons.Fingerprint size={62} />}
-          {fase === 'scan' && (
-            <div style={{
-              position: 'absolute', left: 18, right: 18, height: 2, borderRadius: 2,
-              background: 'var(--di-acc)', boxShadow: '0 0 14px var(--di-acc)',
-              animation: 'di-scanline 1.3s ease-in-out infinite',
-            }}></div>
-          )}
-        </button>
-
-        <p style={{
-          fontFamily: DI_FONT_SANS, fontSize: 16, color: 'var(--di-muted)', textAlign: 'center',
-          lineHeight: 1.5, margin: '34px 0 0', maxWidth: 250, minHeight: 48,
-        }}>
-          {fase === 'idle' && 'Solo operadores registrados pueden acceder'}
-          {fase === 'scan' && 'Verificando huella en el dispositivo…'}
-          {fase === 'ok' && <span>Identidad confirmada<br /><b style={{ color: 'var(--di-text)' }}>{operador}</b></span>}
-        </p>
-
-        <div style={{ marginTop: 22 }}>
-          <DIChip tone="acc">
-            <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--di-acc)', display: 'inline-block' }}></span>
-            <span>MODO CAMPO · OFFLINE</span>
-          </DIChip>
-        </div>
-      </div>
-
-      <div style={{ padding: '0 26px 18px', flexShrink: 0 }}>
-        <DIBtn onClick={verificar} disabled={fase !== 'idle'}>
-          {fase === 'idle' ? 'Verificar identidad' : fase === 'scan' ? 'Verificando…' : 'Acceso concedido'}
-        </DIBtn>
-        <div style={{
-          fontFamily: DI_FONT_MONO, fontSize: 11, letterSpacing: '0.14em', color: 'var(--di-muted)',
-          opacity: 0.6, textAlign: 'center', marginTop: 14,
-        }}>v2.1.0 · ML Kit · Flutter</div>
-      </div>
-    </div>
-  );
-}
-
-// ── Panel del operador ────────────────────────────────────────
-function HomeScreen({ operador, records, online, syncing, onNueva }) {
-  const pendientes = records.filter((r) => r.estado !== 'sincronizado').length;
-  const hoy = records.length;
-
-  const estadoDot = (estado) => ({
-    sincronizado: 'var(--di-acc)',
-    syncing: 'var(--di-warn)',
-    pendiente: 'var(--di-warn)',
-  }[estado]);
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-      <DIModuleTag n="Panel de campo" title="Operaciones del día" />
-
-      {/* banner de conectividad */}
-      <div style={{ padding: '16px 26px 0', flexShrink: 0 }}>
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 10, padding: '11px 15px', borderRadius: 11,
-          border: `1px solid ${online ? 'color-mix(in oklab, var(--di-acc) 35%, transparent)' : 'var(--di-border2)'}`,
-          background: online ? 'color-mix(in oklab, var(--di-acc) 7%, transparent)' : 'var(--di-panel)',
-          fontFamily: DI_FONT_MONO, fontSize: 12, letterSpacing: '0.05em',
-          color: online ? 'var(--di-acc)' : 'var(--di-muted)', transition: 'all .4s',
-        }}>
-          <DIIcons.Sync spinning={syncing} />
-          <span style={{ flex: 1 }}>
-            {syncing ? 'Sincronizando registros…'
-              : online ? 'En línea · datos al día'
-                : `Sin red · ${pendientes} registro${pendientes === 1 ? '' : 's'} en cola local`}
-          </span>
-        </div>
-      </div>
-
-      {/* tarjeta del operador */}
-      <div style={{ padding: '14px 26px 0', flexShrink: 0 }}>
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 14, padding: '15px 16px',
-          borderRadius: 13, background: 'var(--di-panel)', border: '1px solid var(--di-border)',
-        }}>
-          <div style={{
-            width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
-            border: '1px solid color-mix(in oklab, var(--di-acc) 45%, transparent)',
-            color: 'var(--di-acc)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}><DIIcons.User /></div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: DI_FONT_SANS, fontSize: 16.5, fontWeight: 600, color: 'var(--di-text)' }}>{operador}</div>
-            <div style={{ fontFamily: DI_FONT_MONO, fontSize: 11, letterSpacing: '0.1em', color: 'var(--di-muted)', marginTop: 3 }}>OP-2241 · ZONA CHOCÓ</div>
-          </div>
-          <DIChip tone="acc" style={{ fontSize: 10.5 }}>ACTIVO</DIChip>
-        </div>
-      </div>
-
-      {/* métricas */}
-      <div style={{ display: 'flex', gap: 10, padding: '12px 26px 0', flexShrink: 0 }}>
-        {[
-          { v: String(hoy), l: 'Registros hoy' },
-          { v: String(pendientes), l: 'En cola' },
-          { v: '100%', l: 'GPS válido' },
-        ].map((m) => (
-          <div key={m.l} style={{
-            flex: 1, padding: '13px 8px 12px', borderRadius: 12, textAlign: 'center',
-            background: 'var(--di-panel)', border: '1px solid var(--di-border)',
-          }}>
-            <div style={{ fontFamily: DI_FONT_SANS, fontSize: 24, fontWeight: 700, color: 'var(--di-text)' }}>{m.v}</div>
-            <div style={{ fontFamily: DI_FONT_MONO, fontSize: 9.5, letterSpacing: '0.12em', color: 'var(--di-muted)', textTransform: 'uppercase', marginTop: 4 }}>{m.l}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* registros recientes */}
-      <div style={{ padding: '20px 26px 0', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-        <div style={{
-          fontFamily: DI_FONT_MONO, fontSize: 10.5, letterSpacing: '0.22em', color: 'var(--di-muted)',
-          textTransform: 'uppercase', marginBottom: 10, flexShrink: 0,
-        }}>Registros recientes</div>
-        <div style={{ overflow: 'auto', minHeight: 0, display: 'flex', flexDirection: 'column', gap: 8, paddingBottom: 6 }}>
-          {[...records].reverse().map((r) => (
-            <div key={r.id} style={{
-              display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px',
-              borderRadius: 11, background: 'var(--di-panel)', border: '1px solid var(--di-border)', flexShrink: 0,
-            }}>
-              <span style={{ color: 'var(--di-muted)', display: 'flex' }}><DIIcons.Doc /></span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontFamily: DI_FONT_SANS, fontSize: 14.5, fontWeight: 600, color: 'var(--di-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.nombre}</div>
-                <div style={{ fontFamily: DI_FONT_MONO, fontSize: 10.5, letterSpacing: '0.06em', color: 'var(--di-muted)', marginTop: 2 }}>{r.id} · {r.mun} · {r.hora}</div>
-              </div>
-              <span style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: DI_FONT_MONO,
-                fontSize: 10, letterSpacing: '0.08em', color: estadoDot(r.estado), textTransform: 'uppercase',
-              }}>
-                {r.estado === 'syncing'
-                  ? <DIIcons.Sync size={11} spinning />
-                  : <span style={{ width: 6, height: 6, borderRadius: '50%', background: estadoDot(r.estado) }}></span>}
-                <span>{r.estado === 'syncing' ? 'subiendo' : r.estado}</span>
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div style={{ padding: '10px 26px 18px', flexShrink: 0 }}>
-        <DIBtn onClick={onNueva}><DIIcons.Plus /> <span>Nueva captura</span></DIBtn>
-      </div>
-    </div>
-  );
-}
-
-// ── MÓDULO 02 · Captura OCR ───────────────────────────────────
-const OCR_CHECKS = ['Píxeles', 'Luz', 'Ángulo'];
-const OCR_LINES = [
-  'Detectando documento…',
-  'CC 1.098.765.432',
-  'TORRES, MARÍA GABRIELA',
-  'QUIBDÓ · CHOCÓ',
-  'Confianza 98.2%',
-];
-
-function CaptureScreen({ anim, onBack, onDone }) {
-  const [checks, setChecks] = useState(0);
-  const [fase, setFase] = useState('aim'); // aim | proc
-  const [lineas, setLineas] = useState(0);
-  const timers = useRef([]);
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
-
-  useEffect(() => {
-    OCR_CHECKS.forEach((_, i) =>
-      timers.current.push(setTimeout(() => setChecks(i + 1), 800 + i * 700)));
-  }, []);
-
-  const listo = checks >= OCR_CHECKS.length;
-
-  const capturar = () => {
-    if (!listo || fase !== 'aim') return;
-    setFase('proc');
-    OCR_LINES.forEach((_, i) =>
-      timers.current.push(setTimeout(() => setLineas(i + 1), 350 + i * 480)));
-    timers.current.push(setTimeout(() => onDone(), 350 + OCR_LINES.length * 480 + 650));
-  };
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-      <DIModuleTag n="Módulo 02" title="Captura del acta" onBack={onBack} />
-
-      {/* visor */}
-      <div style={{ padding: '18px 26px 0', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-        <div style={{
-          flex: 1, minHeight: 0, borderRadius: 16, position: 'relative', overflow: 'hidden',
-          background: 'linear-gradient(160deg, #0c1514 0%, #080f0e 60%, #0a1211 100%)',
-          border: '1px solid var(--di-border)',
-        }}>
-          {/* esquinas */}
-          {[
-            { top: 18, left: 18, bt: 1, bl: 1 }, { top: 18, right: 18, bt: 1, br: 1 },
-            { bottom: 18, left: 18, bb: 1, bl: 1 }, { bottom: 18, right: 18, bb: 1, br: 1 },
-          ].map((c, i) => (
-            <div key={i} style={{
-              position: 'absolute', width: 34, height: 34,
-              top: c.top, left: c.left, right: c.right, bottom: c.bottom,
-              borderTop: c.bt ? '2.5px solid var(--di-acc)' : 'none',
-              borderBottom: c.bb ? '2.5px solid var(--di-acc)' : 'none',
-              borderLeft: c.bl ? '2.5px solid var(--di-acc)' : 'none',
-              borderRight: c.br ? '2.5px solid var(--di-acc)' : 'none',
-              borderRadius: 3, opacity: 0.95,
-            }}></div>
-          ))}
-
-          {/* línea de escaneo */}
-          {anim && fase === 'aim' && (
-            <div style={{
-              position: 'absolute', left: 30, right: 30, top: 0, height: 2, borderRadius: 2,
-              background: 'var(--di-acc)', opacity: 0.65, boxShadow: '0 0 18px var(--di-acc)',
-              animation: 'di-viewscan 2.8s ease-in-out infinite',
-            }}></div>
-          )}
-
-          {fase === 'aim' && (
-            <div style={{
-              position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontFamily: DI_FONT_MONO, fontSize: 13, letterSpacing: '0.12em', color: 'var(--di-muted)',
-            }}>{listo ? 'Documento alineado' : 'Apunta al documento'}</div>
-          )}
-
-          {/* salida OCR */}
-          {fase === 'proc' && (
-            <div style={{ position: 'absolute', inset: 0, padding: '34px 30px', display: 'flex', flexDirection: 'column', gap: 13, justifyContent: 'center' }}>
-              {OCR_LINES.slice(0, lineas).map((l, i) => (
-                <div key={l} style={{
-                  fontFamily: DI_FONT_MONO, fontSize: i === 0 ? 11.5 : 13.5, letterSpacing: '0.08em',
-                  color: i === 0 ? 'var(--di-muted)' : 'var(--di-acc)',
-                  animation: 'di-rise .3s ease-out', display: 'flex', alignItems: 'center', gap: 9,
-                }}>
-                  {i > 0 && <DIIcons.Check size={11} />}
-                  <span>{l}</span>
-                </div>
-              ))}
-              {lineas >= OCR_LINES.length && (
-                <div style={{ fontFamily: DI_FONT_MONO, fontSize: 11.5, letterSpacing: '0.1em', color: 'var(--di-muted)', animation: 'di-rise .3s ease-out', marginTop: 6 }}>
-                  → Enviando al formulario…
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* chip motor + checks */}
-        <div style={{ paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 10, flexShrink: 0 }}>
-          <DIChip tone="solid" style={{ alignSelf: 'stretch', justifyContent: 'center', padding: '9px 12px' }}>
-            <span style={{ color: 'var(--di-acc)' }}>◉</span>
-            <span>ML Kit · OCR en tiempo real · 100% offline</span>
-          </DIChip>
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-            {OCR_CHECKS.map((c, i) => (
-              <DIChip key={c} tone={i < checks ? 'acc' : 'neutral'} style={{ transition: 'all .3s' }}>
-                {i < checks ? <DIIcons.Check size={10} /> : <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--di-border2)', display: 'inline-block' }}></span>}
-                <span>{c}</span>
-              </DIChip>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* obturador */}
-      <div style={{ padding: '14px 0 16px', display: 'flex', justifyContent: 'center', flexShrink: 0 }}>
-        <button onClick={capturar} aria-label="Capturar" className={listo && fase === 'aim' ? 'di-press' : ''} style={{
-          width: 72, height: 72, borderRadius: '50%', cursor: listo && fase === 'aim' ? 'pointer' : 'default',
-          background: 'var(--di-text)', border: '4px solid var(--di-bg)',
-          boxShadow: listo && fase === 'aim' ? '0 0 0 2px var(--di-acc), 0 8px 24px rgba(0,0,0,0.45)' : '0 0 0 2px var(--di-border2)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0a1110',
-          opacity: fase === 'proc' ? 0.35 : 1, transition: 'all .3s',
-        }}>
-          <DIIcons.Camera />
-        </button>
-      </div>
-    </div>
-  );
-}
-
-Object.assign(window, { AuthScreen, HomeScreen, CaptureScreen });
-
-</script>
-
-<script type="text/babel" data-presets="react">
-// DocIntel — pantallas: formulario del beneficiario + confirmación
-// Exporta a window: FormScreen, SuccessScreen
-
-const { useState: useStateF, useEffect: useEffectF, useRef: useRefF } = React;
-
-// ── MÓDULO 03 · Datos del beneficiario ────────────────────────
-function FormScreen({ onBack, onSaved }) {
-  const [cedula, setCedula] = useStateF('1.098.765.432');
-  const [nombre, setNombre] = useStateF('María G. Torres');
-  const [municipio, setMunicipio] = useStateF('Quibdó, Chocó');
-  const [programa, setPrograma] = useStateF('Jóvenes en Paz');
-  const [gps, setGps] = useStateF('buscando'); // buscando | ok
-  const [guardando, setGuardando] = useStateF(false);
-  const timers = useRefF([]);
-  useEffectF(() => () => timers.current.forEach(clearTimeout), []);
-
-  useEffectF(() => {
-    timers.current.push(setTimeout(() => setGps('ok'), 2100));
-  }, []);
-
-  const guardar = () => {
-    if (guardando) return;
-    setGuardando(true);
-    timers.current.push(setTimeout(() => {
-      onSaved({ nombre, mun: municipio.split(',')[0], cedula, programa });
-    }, 1400));
-  };
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-      <DIModuleTag n="Módulo 03" title="Datos del beneficiario" onBack={onBack} />
-
-      <div style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: '18px 26px 4px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <DIField label="Cédula" value={cedula} onChange={setCedula} conf="99.1%" mono />
-        <DIField label="Nombre completo" value={nombre} onChange={setNombre} conf="98.2%" />
-        <DIField label="Municipio" value={municipio} onChange={setMunicipio} conf="97.5%" />
-        <DIField label="Programa" value={programa} onChange={setPrograma} />
-
-        {/* GPS */}
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 10, padding: '12px 15px', borderRadius: 10,
-          border: `1px solid ${gps === 'ok' ? 'color-mix(in oklab, var(--di-acc) 40%, transparent)' : 'var(--di-border2)'}`,
-          background: gps === 'ok' ? 'color-mix(in oklab, var(--di-acc) 7%, transparent)' : 'var(--di-panel)',
-          fontFamily: DI_FONT_MONO, fontSize: 12, letterSpacing: '0.04em',
-          color: gps === 'ok' ? 'var(--di-acc)' : 'var(--di-muted)', transition: 'all .4s',
-        }}>
-          <DIIcons.Pin />
-          {gps === 'ok'
-            ? <span>5.6943° N, 76.6612° O · capturado</span>
-            : <span style={{ animation: 'di-blink 1.2s ease-in-out infinite' }}>Adquiriendo señal GPS…</span>}
-        </div>
-      </div>
-
-      <div style={{ padding: '8px 26px 18px', flexShrink: 0 }}>
-        <div style={{
-          fontFamily: DI_FONT_MONO, fontSize: 11, letterSpacing: '0.1em', color: 'var(--di-muted)',
-          textAlign: 'center', lineHeight: 1.7, marginBottom: 12,
-        }}>Guardado local · AES-256<br />Se sincronizará al reconectar</div>
-        <DIBtn onClick={guardar} disabled={guardando || gps !== 'ok'}>
-          {guardando ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 9 }}><DIIcons.Sync spinning /> Guardando…</span>
-            : gps !== 'ok' ? 'Esperando GPS…' : 'Guardar registro'}
-        </DIBtn>
-      </div>
-    </div>
-  );
-}
-
-// ── Confirmación ──────────────────────────────────────────────
-function SuccessScreen({ record, online, onNueva, onPanel }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 30px' }}>
-        <div style={{
-          width: 96, height: 96, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: 'color-mix(in oklab, var(--di-acc) 12%, transparent)',
-          border: '1.5px solid var(--di-acc)', color: 'var(--di-acc)',
-          animation: 'di-pop .45s cubic-bezier(.2,1.4,.4,1)',
-        }}>
-          <DIIcons.Check size={42} />
-        </div>
-        <h2 style={{ fontFamily: DI_FONT_SANS, fontSize: 25, fontWeight: 600, color: 'var(--di-text)', margin: '28px 0 0', textAlign: 'center' }}>Registro guardado</h2>
-        <p style={{ fontFamily: DI_FONT_SANS, fontSize: 15.5, color: 'var(--di-muted)', margin: '10px 0 0', textAlign: 'center', lineHeight: 1.5 }}>
-          {online ? 'Sincronizado con el servidor central' : 'Almacenado en el dispositivo, en cola de sincronización'}
-        </p>
-
-        {/* resumen */}
-        <div style={{
-          marginTop: 30, width: '100%', borderRadius: 13, border: '1px solid var(--di-border)',
-          background: 'var(--di-panel)', padding: '16px 18px',
-          display: 'flex', flexDirection: 'column', gap: 11,
-        }}>
-          {[
-            ['ID', record.id],
-            ['Beneficiario', record.nombre],
-            ['Cédula', record.cedula],
-            ['Programa', record.programa],
-            ['Estado', online ? 'SINCRONIZADO' : 'EN COLA LOCAL'],
-          ].map(([k, v]) => (
-            <div key={k} style={{ display: 'flex', justifyContent: 'space-between', gap: 14, fontSize: 13 }}>
-              <span style={{ fontFamily: DI_FONT_MONO, fontSize: 10.5, letterSpacing: '0.16em', color: 'var(--di-muted)', textTransform: 'uppercase', paddingTop: 2 }}>{k}</span>
-              <span style={{
-                fontFamily: k === 'ID' || k === 'Cédula' || k === 'Estado' ? DI_FONT_MONO : DI_FONT_SANS,
-                fontSize: 13.5, fontWeight: 600, textAlign: 'right',
-                color: k === 'Estado' ? (online ? 'var(--di-acc)' : 'var(--di-warn)') : 'var(--di-text)',
-              }}>{v}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div style={{ padding: '0 26px 18px', display: 'flex', flexDirection: 'column', gap: 10, flexShrink: 0 }}>
-        <DIBtn onClick={onNueva}><DIIcons.Plus /> <span>Nueva captura</span></DIBtn>
-        <DIBtn kind="ghost" onClick={onPanel}>Volver al panel</DIBtn>
-      </div>
-    </div>
-  );
-}
-
-Object.assign(window, { FormScreen, SuccessScreen });
-
-</script>
-
-<script type="text/babel" data-presets="react">
-const { useState: useStateApp, useEffect: useEffectApp, useRef: useRefApp } = React;
-
-const TWEAK_DEFAULTS = {
-  "accent": "#2FBF8F",
-  "online": false,
-  "anim": true,
-  "operador": "A. Mosquera"
+/* ── i18n ───────────────────────────────────────────────────── */
+const T = {
+  en: {
+    badge:    'Google Cloud Rapid Agent Hackathon 2026',
+    heroLine1:'AI that audits',
+    heroLine2:'what humans write.',
+    heroSub:  '<b style="color:var(--text)">DocIntel Agent</b> is LIFE·IN·CO\'s multi-tenant platform that ingests, validates and audits handwritten documents at enterprise scale, built on <span style="color:var(--text)">Vertex AI</span>.',
+    probLabel:'THE PROBLEM',      probSub:'Colombia &amp; LATAM',
+    p1lbl:'Social funds at risk annually',    p1foot:'JEP Colombia · Fundasalud · FINDETER',
+    p2lbl:'Handwritten records never digitized', p2foot:'LATAM + Africa + South Asia',
+    p3lbl:'Cost per document — manual audit', p3foot:'DocIntel → &lt;$0.001 per doc',
+    probDesc:'In Colombia, <strong style="color:var(--text)">26,551+ JEP peace agreement actas</strong>, thousands of FINDETER project records, and millions of social program beneficiary forms exist only as handwritten paper — invisible to digital systems, impossible to audit at scale, and vulnerable to fraud.',
+    prodLabel:'IN PRODUCTION',    prodSub:'Real data, real clients',
+    m1lbl:'Actas processed (JEP)',           m1foot:'Colombia peace agreement records',
+    m2lbl:'Peak throughput',                 m2foot:'FINDETER Rueda de Negocios · ~$1 USD total',
+    m3lbl:'Per document processed',          m3foot:'vs $391 manual audit cost',
+    m4lbl:'Active audit firms as clients',   m4foot:'Colombian mid-market · 8B COP under management',
+    archLabel:'ARCHITECTURE',     archSub:'3-layer OCR cascade + multi-agent',
+    l1tag:'Layer 1 · pdfplumber',            l1title:'Structured text extraction',
+    l1desc:'Native PDF text parsing. ~240ms/doc. $0 cost. Handles 60–70% of documents without AI.',
+    l2tag:'Layer 2 · Gemini 2.5 Flash',      l2title:'Vision OCR — handwriting',
+    l2desc:'Visual AI for handwritten fields, checkboxes, signatures. ~820ms/page. Covers remaining 30–40%.',
+    l3tag:'Layer 3 · Gemini 2.5 Pro',        l3title:'High-confidence validation',
+    l3desc:'Triggered only when confidence &lt;0.75. ~640ms. Legal-grade accuracy for critical fields.',
+    a1tag:'Agent A · Compliance',            a1title:'Regulatory compliance check',
+    a1desc:'Structured output: compliance_score, missing fields, verdict (APPROVED / OBSERVATION / REJECTED), justification. Runs in parallel.',
+    a2tag:'Agent B · Anti-Fraud',            a2title:'Anomaly &amp; duplicate detection',
+    a2desc:'Fraud risk score, duplicate probability, pattern alerts. Runs in parallel with Compliance on every document.',
+    demoLabel:'LIVE DEMO',        demoSub:'Interactive prototype',
+    impLabel:'GLOBAL IMPACT',     impSub:'Scalability roadmap',
+    ic1:'Region', ic2:'Program', ic3:'Scale', ic4:'Opportunity',
+    ir2p:'Bienestar',   ir2s:'30M beneficiaries',  ir2o:'~$45M USD TAM',
+    ir3s:'21M families',                            ir3o:'~$32M USD TAM',
+    ir4r:'Sub-Saharan Africa', ir4p:'Cash transfer programs', ir4s:'200M+ beneficiaries', ir4o:'Largest untapped market',
+    ir5r:'South Asia',         ir5p:'MNREGA · PM-KISAN',      ir5s:'150M+ recipients',    ir5o:'India + Bangladesh + Pakistan',
+    sdg1:'SDG 1 · No Poverty', sdg10:'SDG 10 · Reduced Inequalities',
+    sdg16:'SDG 16 · Peace, Justice &amp; Institutions', sdg17:'SDG 17 · Partnerships for the Goals',
+    objLabel:'COMMERCIAL OBJECTIVES',
+    o1lbl:'Annual documents processed', o2lbl:'Enterprise clients', o3lbl:'ARR target',
+    stLabel:'TECHNOLOGY STACK',   stSub:'Agentic Orchestration Platform',
+    tagline:'The operating system', taglineRest:' for highly regulated industries.',
+    footRight:'Vision · Precision · Execution',
+  },
+  es: {
+    badge:    'Google Cloud Rapid Agent Hackathon 2026',
+    heroLine1:'IA que audita',
+    heroLine2:'lo que los humanos escriben.',
+    heroSub:  '<b style="color:var(--text)">DocIntel Agent</b> es la plataforma multi-tenant de LIFE·IN·CO que ingiere, valida y audita documentos manuscritos a escala enterprise, construida sobre <span style="color:var(--text)">Vertex AI</span>.',
+    probLabel:'EL PROBLEMA',      probSub:'Colombia y LATAM',
+    p1lbl:'Fondos sociales en riesgo anual',  p1foot:'JEP Colombia · Fundasalud · FINDETER',
+    p2lbl:'Registros manuscritos sin digitalizar', p2foot:'LATAM + África + Asia del Sur',
+    p3lbl:'Costo por documento — auditoría manual', p3foot:'DocIntel → &lt;$0.001 por doc',
+    probDesc:'En Colombia, <strong style="color:var(--text)">más de 26,551 actas JEP del acuerdo de paz</strong>, miles de registros FINDETER y millones de formularios de beneficiarios de programas sociales solo existen en papel manuscrito — invisibles a los sistemas digitales, imposibles de auditar a escala y vulnerables al fraude.',
+    prodLabel:'EN PRODUCCIÓN',    prodSub:'Datos reales, clientes reales',
+    m1lbl:'Actas procesadas (JEP)',           m1foot:'Actas del acuerdo de paz de Colombia',
+    m2lbl:'Pico de throughput',               m2foot:'FINDETER Rueda de Negocios · ~$1 USD total',
+    m3lbl:'Por documento procesado',          m3foot:'vs $391 de auditoría manual',
+    m4lbl:'Firmas auditoras activas',         m4foot:'Mercado medio colombiano · 8B COP bajo gestión',
+    archLabel:'ARQUITECTURA',     archSub:'Cascada OCR 3 capas + multi-agente',
+    l1tag:'Capa 1 · pdfplumber',             l1title:'Extracción de texto estructurado',
+    l1desc:'Parseo de texto PDF nativo. ~240ms/doc. $0 de costo. Maneja el 60–70% sin IA.',
+    l2tag:'Capa 2 · Gemini 2.5 Flash',       l2title:'OCR Visual — escritura a mano',
+    l2desc:'IA visual para campos manuscritos, casillas y firmas. ~820ms/pág. Cubre el 30–40% restante.',
+    l3tag:'Capa 3 · Gemini 2.5 Pro',         l3title:'Validación de alta confianza',
+    l3desc:'Solo cuando confianza &lt;0.75. ~640ms. Precisión legal para campos críticos.',
+    a1tag:'Agente A · Cumplimiento',         a1title:'Verificación de cumplimiento normativo',
+    a1desc:'Salida estructurada: compliance_score, campos_faltantes, veredicto (APROBADO / OBSERVACIÓN / RECHAZADO), justificación. Corre en paralelo.',
+    a2tag:'Agente B · Anti-Fraude',          a2title:'Detección de anomalías y duplicados',
+    a2desc:'Score de riesgo, probabilidad de duplicado, alertas de patrones. Corre en paralelo con Cumplimiento en cada documento.',
+    demoLabel:'DEMO EN VIVO',     demoSub:'Prototipo interactivo',
+    impLabel:'IMPACTO GLOBAL',    impSub:'Hoja de ruta de escalabilidad',
+    ic1:'Región', ic2:'Programa', ic3:'Escala', ic4:'Oportunidad',
+    ir2p:'Bienestar',           ir2s:'30M beneficiarios',   ir2o:'~$45M USD TAM',
+    ir3s:'21M familias',                                    ir3o:'~$32M USD TAM',
+    ir4r:'África Subsahariana', ir4p:'Programas de transferencias', ir4s:'200M+ beneficiarios', ir4o:'Mayor mercado sin explotar',
+    ir5r:'Asia del Sur',        ir5p:'MNREGA · PM-KISAN',   ir5s:'150M+ receptores',    ir5o:'India + Bangladesh + Pakistán',
+    sdg1:'ODS 1 · Fin de la Pobreza', sdg10:'ODS 10 · Reducción de Desigualdades',
+    sdg16:'ODS 16 · Paz, Justicia e Instituciones', sdg17:'ODS 17 · Alianzas para los Objetivos',
+    objLabel:'OBJETIVOS COMERCIALES',
+    o1lbl:'Documentos procesados anuales', o2lbl:'Clientes enterprise', o3lbl:'ARR objetivo',
+    stLabel:'STACK TECNOLÓGICO',  stSub:'Plataforma de Orquestación Agéntica',
+    tagline:'El sistema operativo', taglineRest:' para industrias altamente reguladas.',
+    footRight:'Visión · Precisión · Ejecución',
+  }
 };
 
-const PASOS = [
-  { id: 'auth',    n: '01', l: 'Autenticación' },
-  { id: 'home',    n: '—',  l: 'Panel de campo' },
-  { id: 'capture', n: '02', l: 'Captura OCR' },
-  { id: 'form',    n: '03', l: 'Datos del beneficiario' },
-  { id: 'success', n: '✓',  l: 'Confirmación' },
-];
-
-const RECORDS_INICIALES = [
-  { id: 'REG-0118', nombre: 'Yeison Palacios M.', mun: 'Quibdó', hora: '08:32', estado: 'sincronizado', cedula: '1.077.421.880', programa: 'Jóvenes en Paz' },
-  { id: 'REG-0119', nombre: 'Luz D. Córdoba',     mun: 'Atrato', hora: '09:05', estado: 'pendiente',    cedula: '1.077.318.224', programa: 'Jóvenes en Paz' },
-  { id: 'REG-0120', nombre: 'Carlos Mena R.',     mun: 'Quibdó', hora: '09:27', estado: 'pendiente',    cedula: '1.098.554.103', programa: 'Renta Joven' },
-];
-
-function App() {
-  const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
-  const [screen, setScreen] = useStateApp('auth');
-  const [records, setRecords] = useStateApp(RECORDS_INICIALES);
-  const [ultimo, setUltimo] = useStateApp(null);
-  const [syncing, setSyncing] = useStateApp(false);
-  const nextNum = useRefApp(121);
-  const timers = useRefApp([]);
-  useEffectApp(() => () => timers.current.forEach(clearTimeout), []);
-
-  useEffectApp(() => {
-    if (!t.online) { setSyncing(false); return; }
-    const pendientes = records.filter((r) => r.estado === 'pendiente');
-    if (pendientes.length === 0) return;
-    setSyncing(true);
-    setRecords((rs) => rs.map((r) => r.estado === 'pendiente' ? { ...r, estado: 'syncing' } : r));
-    pendientes.forEach((p, i) => {
-      timers.current.push(setTimeout(() => {
-        setRecords((rs) => rs.map((r) => r.id === p.id ? { ...r, estado: 'sincronizado' } : r));
-        if (i === pendientes.length - 1) setSyncing(false);
-      }, 1100 + i * 900));
-    });
-  }, [t.online]);
-
-  const guardarRegistro = (datos) => {
-    const num = nextNum.current++;
-    const min = 41 + (num - 121) * 7;
-    const hora = `${9 + Math.floor(min / 60)}:${String(min % 60).padStart(2, '0')}`;
-    const rec = {
-      id: `REG-0${num}`, hora,
-      estado: t.online ? 'sincronizado' : 'pendiente',
-      ...datos,
-    };
-    setRecords((rs) => [...rs, rec]);
-    setUltimo(rec);
-    setScreen('success');
-  };
-
-  const irA = (id) => {
-    if (id === 'success' && !ultimo) {
-      setUltimo({ ...records[records.length - 1] });
-    }
-    setScreen(id);
-  };
-
-  const pasoActual = PASOS.findIndex((p) => p.id === screen);
-
-  const [scale, setScale] = useStateApp(1);
-  useEffectApp(() => {
-    const medir = () => setScale(Math.min(1,
-      (window.innerHeight - 24) / 856,
-      (window.innerWidth - 48) / 770
-    ));
-    medir();
-    window.addEventListener('resize', medir);
-    return () => window.removeEventListener('resize', medir);
-  }, []);
-
-  return (
-    <div style={{
-      '--di-acc': t.accent,
-      '--di-bg': '#0A100F',
-      '--di-panel': '#101918',
-      '--di-panel2': '#15201e',
-      '--di-border': '#1a2624',
-      '--di-border2': '#243431',
-      '--di-text': '#E9F4F0',
-      '--di-muted': '#7E938D',
-      '--di-warn': '#D9A13B',
-      height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      boxSizing: 'border-box',
-    }}>
-     <div style={{
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      gap: 64, padding: '0 32px', boxSizing: 'border-box', flexShrink: 0,
-      transform: `scale(${scale})`, transformOrigin: 'center center',
-     }}>
-      <nav style={{ display: 'flex', flexDirection: 'column', gap: 4, width: 240, flexShrink: 0 }}>
-        <div style={{
-          fontFamily: DI_FONT_MONO, fontSize: 11, letterSpacing: '0.34em', color: 'var(--di-acc)',
-          textTransform: 'uppercase', marginBottom: 6,
-        }}>Docintel</div>
-        <div style={{
-          fontFamily: DI_FONT_SANS, fontSize: 21, fontWeight: 600, color: 'var(--di-text)',
-          lineHeight: 1.25, marginBottom: 22,
-        }}>Registro de beneficiarios en campo, sin conexión</div>
-        {PASOS.map((p, i) => {
-          const activo = i === pasoActual;
-          return (
-            <button key={p.id} onClick={() => irA(p.id)} className="di-press" style={{
-              display: 'flex', alignItems: 'center', gap: 13, padding: '11px 14px',
-              borderRadius: 11, cursor: 'pointer', textAlign: 'left',
-              background: activo ? 'var(--di-panel)' : 'transparent',
-              border: `1px solid ${activo ? 'var(--di-border2)' : 'transparent'}`,
-              transition: 'all .2s',
-            }}>
-              <span style={{
-                fontFamily: DI_FONT_MONO, fontSize: 11, width: 24, flexShrink: 0,
-                color: activo ? 'var(--di-acc)' : 'var(--di-muted)', letterSpacing: '0.05em',
-              }}>{p.n}</span>
-              <span style={{
-                fontFamily: DI_FONT_SANS, fontSize: 14.5, fontWeight: activo ? 600 : 500,
-                color: activo ? 'var(--di-text)' : 'var(--di-muted)',
-              }}>{p.l}</span>
-            </button>
-          );
-        })}
-        <div style={{
-          marginTop: 26, fontFamily: DI_FONT_MONO, fontSize: 10.5, letterSpacing: '0.12em',
-          color: 'var(--di-muted)', opacity: 0.65, lineHeight: 1.8,
-        }}>LIFEINCO · PROTOTIPO v2.1<br />FLUTTER · ML KIT · ALLOYDB</div>
-      </nav>
-
-      <DIFrame time="9:41" online={t.online}>
-        <div key={screen} data-screen-label={PASOS[pasoActual] ? PASOS[pasoActual].l : screen}
-          style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, animation: 'di-screen .32s ease-out' }}>
-          {screen === 'auth' && <AuthScreen operador={t.operador} onDone={() => setScreen('home')} />}
-          {screen === 'home' && <HomeScreen operador={t.operador} records={records} online={t.online} syncing={syncing} onNueva={() => setScreen('capture')} />}
-          {screen === 'capture' && <CaptureScreen anim={t.anim} onBack={() => setScreen('home')} onDone={() => setScreen('form')} />}
-          {screen === 'form' && <FormScreen onBack={() => setScreen('capture')} onSaved={guardarRegistro} />}
-          {screen === 'success' && ultimo && <SuccessScreen record={ultimo} online={t.online} onNueva={() => setScreen('capture')} onPanel={() => setScreen('home')} />}
-        </div>
-      </DIFrame>
-     </div>
-
-      <TweaksPanel>
-        <TweakSection label="Simulación" />
-        <TweakToggle label="Conectividad (LTE)" value={t.online} onChange={(v) => setTweak('online', v)} />
-        <TweakToggle label="Animaciones de escaneo" value={t.anim} onChange={(v) => setTweak('anim', v)} />
-        <TweakSection label="Marca" />
-        <TweakColor label="Color de acento" value={t.accent}
-          options={['#2FBF8F', '#2FB2C9', '#9DBF2F', '#D9A13B']}
-          onChange={(v) => setTweak('accent', v)} />
-        <TweakText label="Operador" value={t.operador} onChange={(v) => setTweak('operador', v)} />
-      </TweaksPanel>
-    </div>
-  );
+function setLang(l) {
+  document.getElementById('btn-en').classList.toggle('active', l === 'en');
+  document.getElementById('btn-es').classList.toggle('active', l === 'es');
+  const d = T[l];
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const v = d[el.dataset.i18n];
+    if (v !== undefined) el.innerHTML = v;
+  });
+  document.querySelectorAll('[data-i18n-html]').forEach(el => {
+    const v = d[el.dataset.i18nHtml];
+    if (v !== undefined) el.innerHTML = v;
+  });
+  document.documentElement.lang = l;
 }
-
-ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+setLang('en');
 </script>
 </body>
 </html>
