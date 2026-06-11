@@ -806,4 +806,300 @@ footer.wrap {
     <span class="pill">Document AI</span>
     <span class="pill">Cloud Run</span>
     <span class="pill">BigQuery</span>
-    <sp
+    <sp    <span class="pill">AlloyDB</span>
+    <span class="pill">Flutter · MLKit</span>
+    <span class="pill">N8N</span>
+    <span class="pill">Python FastAPI</span>
+    <span class="pill">Google Cloud Run</span>
+    <span class="pill">pdfplumber</span>
+    <span class="pill">Gemini 2.5 Flash</span>
+    <span class="pill">Gemini 2.5 Pro</span>
+  </div>
+</div>
+
+<!-- ══════════════════ CTA ═══════════════════════════════════ -->
+<div class="wrap" style="padding-top:80px;padding-bottom:120px;text-align:center">
+  <div class="sec-label reveal" style="justify-content:center">
+    <span data-i18n="ctaLabel">TRY IT NOW</span>
+    <em> · </em>
+    <span data-i18n="ctaSub">Google Cloud Rapid Agent Hackathon 2026</span>
+  </div>
+  <p style="font-size:20px;color:var(--muted);max-width:540px;margin:0 auto 40px;line-height:1.7" data-i18n="ctaDesc">
+    Live demo available. Real data. Two active clients. Built on Google Cloud.
+  </p>
+  <a href="https://lifeinco.github.io/docintel-agent/app.html" target="_blank"
+     style="display:inline-flex;align-items:center;gap:10px;padding:16px 36px;border-radius:99px;background:var(--acc);color:#000;font-weight:700;font-size:15px;letter-spacing:0.04em;text-decoration:none;transition:opacity .2s"
+     onmouseover="this.style.opacity='.82'" onmouseout="this.style.opacity='1'"
+     data-i18n="ctaBtn">Launch Demo</a>
+</div>
+
+<!-- ══════════════════ FOOTER ════════════════════════════════ -->
+<footer class="wrap">
+  <div class="wordmark" style="font-size:15px">LIFE<em>·</em>IN<em>·</em>CO</div>
+  <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:0.18em;color:var(--muted)">
+    DocIntel Agent &nbsp;·&nbsp; Google Cloud Hackathon 2026
+  </div>
+  <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:0.12em;color:var(--muted)">
+    <a href="mailto:jp.bernal@lifeinco.com.co" style="color:var(--muted);text-decoration:none">jp.bernal@lifeinco.com.co</a>
+  </div>
+</footer>
+
+</div><!-- /content -->
+
+<script>
+/* ═══════════════════════════════════════════════
+   I18N
+═══════════════════════════════════════════════ */
+const T = {
+  en: {
+    probLabel:'THE PROBLEM', probSub:'Invisible records, invisible accountability',
+    probDesc:'In Colombia, <strong style="color:var(--text)">26,551+ JEP peace agreement actas</strong>, thousands of FINDETER project records, and millions of social program beneficiary forms exist only as handwritten paper — invisible to digital systems, impossible to audit at scale, and vulnerable to fraud.',
+    prodLabel:'IN PRODUCTION', prodSub:'Real data, real clients',
+    m1lbl:'Actas processed (JEP)', m1foot:'Colombia peace agreement records',
+    m2lbl:'Peak throughput', m2foot:'FINDETER Rueda de Negocios · ~$1 USD total',
+    m3lbl:'Per document processed', m3foot:'vs $391 manual audit cost',
+    m4lbl:'Active audit firms as clients', m4foot:'Colombian mid-market · 8B COP under management',
+    archLabel:'ARCHITECTURE', archSub:'3-layer OCR cascade + multi-agent',
+    l1tag:'Layer 1 · pdfplumber', l1title:'Structured text extraction',
+    l1desc:'Native PDF text parsing. ~240ms/doc. $0 cost. Handles 60–70% of documents without AI.',
+    l2tag:'Layer 2 · Gemini 2.5 Flash', l2title:'Vision OCR — handwriting',
+    l2desc:'Visual AI for handwritten fields, checkboxes, signatures. ~820ms/page. Covers remaining 30–40%.',
+    l3tag:'Layer 3 · Gemini 2.5 Pro', l3title:'High-confidence validation',
+    l3desc:'Triggered only when confidence <0.75. ~640ms. Legal-grade accuracy for critical fields.',
+    a1tag:'Agent A · Compliance', a1title:'Regulatory compliance check',
+    a1desc:'Structured output: compliance_score, campos_faltantes, veredicto (APPROVED / OBSERVATION / REJECTED), justification. Runs in parallel.',
+    a2tag:'Agent B · Anti-Fraud', a2title:'Anomaly & duplicate detection',
+    a2desc:'Fraud risk score, duplicate probability, pattern alerts. Runs in parallel with Compliance on every single document.',
+    demoLabel:'LIVE DEMO', demoSub:'Interactive prototype',
+    impLabel:'GLOBAL IMPACT', impSub:'Scalability roadmap',
+    ic1:'Region', ic2:'Program', ic3:'Scale', ic4:'Opportunity',
+    ir2p:'Bienestar', ir2s:'30M beneficiaries', ir2o:'~$45M USD TAM',
+    ir3s:'21M families', ir3o:'~$32M USD TAM',
+    ir4r:'Sub-Saharan Africa', ir4p:'Cash transfer programs', ir4s:'200M+ beneficiaries', ir4o:'Largest untapped market',
+    ir5r:'South Asia', ir5p:'MNREGA · PM-KISAN', ir5s:'150M+ recipients', ir5o:'India + Bangladesh + Pakistan',
+    sdg1:'SDG 1 · No Poverty', sdg10:'SDG 10 · Reduced Inequalities',
+    sdg16:'SDG 16 · Peace, Justice & Institutions', sdg17:'SDG 17 · Partnerships for the Goals',
+    objLabel:'COMMERCIAL OBJECTIVES', o1lbl:'Annual documents processed', o2lbl:'Enterprise clients', o3lbl:'ARR target',
+    stLabel:'TECHNOLOGY STACK', stSub:'Agentic Orchestration Platform',
+    ctaLabel:'TRY IT NOW', ctaSub:'Google Cloud Rapid Agent Hackathon 2026',
+    ctaDesc:'Live demo available. Real data. Two active clients. Built on Google Cloud.',
+    ctaBtn:'Launch Demo'
+  },
+  es: {
+    probLabel:'EL PROBLEMA', probSub:'Registros invisibles, rendición de cuentas imposible',
+    probDesc:'En Colombia, <strong style="color:var(--text)">más de 26.551 actas del acuerdo de paz de la JEP</strong>, miles de registros de proyectos FINDETER y millones de formularios de beneficiarios de programas sociales existen solo en papel manuscrito — invisibles para los sistemas digitales, imposibles de auditar a escala y vulnerables al fraude.',
+    prodLabel:'EN PRODUCCIÓN', prodSub:'Datos reales, clientes reales',
+    m1lbl:'Actas procesadas (JEP)', m1foot:'Registros del acuerdo de paz de Colombia',
+    m2lbl:'Throughput máximo', m2foot:'FINDETER Rueda de Negocios · ~$1 USD total',
+    m3lbl:'Por documento procesado', m3foot:'vs $391 costo auditoría manual',
+    m4lbl:'Firmas de auditoría activas como clientes', m4foot:'Mediano mercado colombiano · 8B COP bajo gestión',
+    archLabel:'ARQUITECTURA', archSub:'Cascada OCR 3 capas + multi-agente',
+    l1tag:'Capa 1 · pdfplumber', l1title:'Extracción de texto estructurado',
+    l1desc:'Parseo nativo de texto PDF. ~240ms/doc. Costo $0. Maneja el 60–70% de documentos sin IA.',
+    l2tag:'Capa 2 · Gemini 2.5 Flash', l2title:'OCR visual — manuscrito',
+    l2desc:'IA visual para campos manuscritos, casillas, firmas. ~820ms/pág. Cubre el 30–40% restante.',
+    l3tag:'Capa 3 · Gemini 2.5 Pro', l3title:'Validación de alta confianza',
+    l3desc:'Se activa solo cuando confianza <0.75. ~640ms. Precisión de grado legal para campos críticos.',
+    a1tag:'Agente A · Cumplimiento', a1title:'Verificación de cumplimiento regulatorio',
+    a1desc:'Salida estructurada: compliance_score, campos_faltantes, veredicto (APROBADO / OBSERVACIÓN / RECHAZADO), justificación. Corre en paralelo.',
+    a2tag:'Agente B · Antifraude', a2title:'Detección de anomalías y duplicados',
+    a2desc:'Puntuación de riesgo de fraude, probabilidad de duplicado, alertas de patrones. Corre en paralelo con Cumplimiento en cada documento.',
+    demoLabel:'DEMO EN VIVO', demoSub:'Prototipo interactivo',
+    impLabel:'IMPACTO GLOBAL', impSub:'Hoja de ruta de escalabilidad',
+    ic1:'Región', ic2:'Programa', ic3:'Escala', ic4:'Oportunidad',
+    ir2p:'Bienestar', ir2s:'30M beneficiarios', ir2o:'~$45M USD TAM',
+    ir3s:'21M familias', ir3o:'~$32M USD TAM',
+    ir4r:'África Subsahariana', ir4p:'Programas de transferencia de efectivo', ir4s:'200M+ beneficiarios', ir4o:'Mayor mercado sin explotar',
+    ir5r:'Asia del Sur', ir5p:'MNREGA · PM-KISAN', ir5s:'150M+ receptores', ir5o:'India + Bangladesh + Pakistán',
+    sdg1:'ODS 1 · Fin de la Pobreza', sdg10:'ODS 10 · Reducción de Desigualdades',
+    sdg16:'ODS 16 · Paz, Justicia e Instituciones', sdg17:'ODS 17 · Alianzas para los Objetivos',
+    objLabel:'OBJETIVOS COMERCIALES', o1lbl:'Documentos procesados al año', o2lbl:'Clientes empresariales', o3lbl:'Meta ARR',
+    stLabel:'STACK TECNOLÓGICO', stSub:'Plataforma de Orquestación Agéntica',
+    ctaLabel:'PRUÉBALO AHORA', ctaSub:'Google Cloud Rapid Agent Hackathon 2026',
+    ctaDesc:'Demo en vivo disponible. Datos reales. Dos clientes activos. Construido en Google Cloud.',
+    ctaBtn:'Abrir Demo'
+  }
+};
+
+let currentLang = 'en';
+function setLang(lang) {
+  currentLang = lang;
+  document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+  document.getElementById('btn-es').classList.toggle('active', lang === 'es');
+  const t = T[lang];
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const k = el.getAttribute('data-i18n');
+    if (t[k] !== undefined) el.textContent = t[k];
+  });
+  document.querySelectorAll('[data-i18n-html]').forEach(el => {
+    const k = el.getAttribute('data-i18n-html');
+    if (t[k] !== undefined) el.innerHTML = t[k];
+  });
+}
+
+/* ═══════════════════════════════════════════════
+   SCROLL REVEAL
+═══════════════════════════════════════════════ */
+const ro = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); ro.unobserve(e.target); } });
+}, { threshold: 0.1 });
+document.querySelectorAll('.reveal').forEach(el => ro.observe(el));
+
+/* ═══════════════════════════════════════════════
+   STARFIELD
+═══════════════════════════════════════════════ */
+(function(){
+  const canvas = document.getElementById('starfield');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  let stars = [];
+  function resize() {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+    stars = Array.from({length: 120}, () => ({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      r: Math.random() * 1.1 + 0.2,
+      a: Math.random(),
+      s: (Math.random() * 0.4 + 0.1) * (Math.random() < 0.5 ? 1 : -1)
+    }));
+  }
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    stars.forEach(s => {
+      s.a += s.s * 0.004;
+      if (s.a > 1) s.a = 1, s.s *= -1;
+      if (s.a < 0) s.a = 0, s.s *= -1;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(0,224,194,${s.a * 0.45})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+  resize();
+  window.addEventListener('resize', resize);
+  draw();
+})();
+
+/* ═══════════════════════════════════════════════
+   HERO ANIMATION
+═══════════════════════════════════════════════ */
+(function(){
+  const TOTAL = 35000;
+  let timers = [];
+
+  function haScale() {
+    const hero  = document.getElementById('hero-anim');
+    const stage = document.getElementById('ha-stage');
+    if (!hero || !stage) return;
+    const sw = hero.clientWidth, sh = hero.clientHeight;
+    stage.style.transform = 'scale(' + Math.min(sw / 1920, sh / 1080) + ')';
+  }
+  haScale();
+  window.addEventListener('resize', haScale);
+
+  function haLater(fn, ms) { timers.push(setTimeout(fn, ms)); }
+  function haCancel() { timers.forEach(clearTimeout); timers = []; }
+
+  function haShow(id) {
+    document.querySelectorAll('.ha-scene').forEach(sc => {
+      sc.classList.remove('ha-active');
+      sc.querySelectorAll('.ha-anim,.ha-fw,.ha-fa,.ha-metric').forEach(el => el.classList.remove('in'));
+    });
+    const sc = document.getElementById(id);
+    if (!sc) return;
+    sc.classList.add('ha-active');
+    sc.querySelectorAll('.ha-anim').forEach(el => {
+      const d = parseFloat(getComputedStyle(el).transitionDelay) * 1000 || 0;
+      haLater(() => el.classList.add('in'), d + 30);
+    });
+  }
+
+  function haPS(n) {
+    document.querySelectorAll('.ha-ps').forEach(s => s.classList.remove('active'));
+    const ps = document.getElementById('ha-ps' + n);
+    if (ps) ps.classList.add('active');
+  }
+  function haPhoneOn()  { const w = document.getElementById('ha-phone-wrap'); if (w) w.classList.add('visible'); }
+  function haPhoneOff() { const w = document.getElementById('ha-phone-wrap'); if (w) w.classList.remove('visible'); }
+
+  function haS4() {
+    haLater(() => document.getElementById('ha-fw1').classList.add('in'), 600);
+    haLater(() => {
+      document.getElementById('ha-fa1').classList.add('in');
+      document.getElementById('ha-fw2').classList.add('in');
+    }, 1150);
+    haLater(() => {
+      document.getElementById('ha-fa2').classList.add('in');
+      document.getElementById('ha-fw3').classList.add('in');
+    }, 1700);
+    haLater(() => {
+      document.getElementById('ha-s4n').classList.add('in');
+      document.getElementById('ha-s4sub').classList.add('in');
+    }, 6500);
+  }
+
+  function haCounter(target, dur) {
+    const el = document.getElementById('ha-count');
+    if (!el) return;
+    const t0 = performance.now();
+    (function tick(now) {
+      const p = Math.min((now - t0) / dur, 1);
+      const ease = 1 - Math.pow(1 - p, 3);
+      el.textContent = Math.round(ease * target).toLocaleString();
+      if (p < 1) requestAnimationFrame(tick);
+      else el.textContent = target.toLocaleString() + '+';
+    })(performance.now());
+  }
+
+  let progRaf;
+  function haProgress(totalMs) {
+    const bar = document.getElementById('ha-prog');
+    if (!bar) return;
+    bar.style.width = '0%';
+    const t0 = performance.now();
+    cancelAnimationFrame(progRaf);
+    (function tick() {
+      const pct = Math.min((performance.now() - t0) / totalMs * 100, 100);
+      bar.style.width = pct + '%';
+      if (pct < 100) progRaf = requestAnimationFrame(tick);
+    })();
+  }
+
+  function haLoop() {
+    haCancel();
+    haPhoneOff();
+    haPS(1);
+    document.getElementById('ha-count').textContent = '0';
+    document.getElementById('ha-hint').classList.remove('show');
+    document.querySelectorAll('.ha-scene').forEach(sc => {
+      sc.classList.remove('ha-active');
+      sc.querySelectorAll('.ha-anim,.ha-fw,.ha-fa,.ha-metric').forEach(el => el.classList.remove('in'));
+    });
+    haStart();
+  }
+
+  function haStart() {
+    haProgress(TOTAL);
+    haLater(() => haShow('ha-s1'), 0);
+    haLater(() => haShow('ha-s2'), 4000);
+    haLater(() => haShow('ha-s3'), 8000);
+    haLater(() => { haShow('ha-s4'); haPhoneOn(); haS4(); }, 12000);
+    haLater(() => haPS(2), 15500);
+    haLater(() => haPS(3), 18500);
+    haLater(() => { haShow('ha-s5'); haCounter(100000, 3500); }, 20000);
+    haLater(() => { haShow('ha-s6'); haPhoneOff(); }, 27000);
+    haLater(() => {
+      document.querySelectorAll('.ha-scene').forEach(s => s.classList.remove('ha-active'));
+      const hint = document.getElementById('ha-hint');
+      if (hint) hint.classList.add('show');
+      setTimeout(haLoop, 2500);
+    }, TOTAL);
+  }
+
+  window.addEventListener('load', () => setTimeout(haStart, 600));
+})();
+</script>
+</body>
+</html>
