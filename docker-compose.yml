@@ -1,0 +1,41 @@
+# DocIntel Agent — entorno local de desarrollo
+# Uso:  docker compose up --build
+#   API:      http://localhost:8800  (docs en /docs)
+#   Postgres: localhost:5432  (docintel / docintel)
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: docintel
+      POSTGRES_PASSWORD: docintel
+      POSTGRES_DB: docintel
+    # Sin puerto publicado: la API llega por la red interna de Docker.
+    volumes:
+      - docintel_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U docintel"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://docintel:docintel@db:5432/docintel
+      SECRET_KEY: dev-secret-no-usar-en-produccion
+      # Demo MVP: extracción simulada determinista. Para OCR real pon aquí
+      # tu key: GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_API_KEY: ""
+      GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-lifeinco-docintel}
+      GCS_BUCKET_NAME: ${GCS_BUCKET_NAME:-docintel-documents}
+    ports:
+      - "8800:8080"
+    volumes:
+      - .:/app          # hot-reload del código local
+    command: uvicorn main:app --host 0.0.0.0 --port 8080 --reload
+
+volumes:
+  docintel_pgdata:
